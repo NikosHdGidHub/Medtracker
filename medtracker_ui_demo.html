@@ -1,0 +1,2386 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f7fb" />
+    <title>Мои лекарства — интерактивный Mini App / DEMO</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --surface: #fff;
+        --soft: #f0f4f7;
+        --line: #e3e9ee;
+        --ink: #182a35;
+        --sub: #647684;
+        --green: #0c7d73;
+        --green-d: #09685f;
+        --green-bg: #e2f4ef;
+        --amber: #ae6f14;
+        --amber-bg: #fff2d9;
+        --red: #ba5149;
+        --red-bg: #ffebea;
+        --blue: #3570b0;
+        --shadow: 0 14px 42px rgba(25, 54, 75, 0.055);
+        --radius: 20px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          14px/1.48 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          Arial,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.43;
+        cursor: not-allowed;
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 3px solid #68b5ab;
+        outline-offset: 2px;
+      }
+      a {
+        color: var(--green);
+      }
+      .app {
+        max-width: 1210px;
+        margin: auto;
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+      .sidebar {
+        padding: 28px 18px;
+        position: sticky;
+        top: 0;
+        align-self: start;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+        border-right: 1px solid var(--line);
+        background: var(--surface);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 2px 10px;
+      }
+      .brand-icon {
+        width: 43px;
+        height: 43px;
+        background: var(--green);
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 22px;
+      }
+      .brand strong {
+        font-size: 17px;
+        display: block;
+        letter-spacing: -0.35px;
+      }
+      .brand span {
+        font-size: 11px;
+        color: var(--sub);
+      }
+      .navigation {
+        display: grid;
+        gap: 7px;
+      }
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        border: 0;
+        background: transparent;
+        width: 100%;
+        padding: 13px 15px;
+        border-radius: 13px;
+        text-align: left;
+        color: var(--sub);
+        font-weight: 650;
+        transition: 0.16s;
+      }
+      .nav:hover,
+      .nav.active {
+        background: var(--green-bg);
+        color: var(--green-d);
+      }
+      .nav .ico {
+        font-size: 19px;
+        width: 22px;
+        text-align: center;
+      }
+      .sidebar-foot {
+        margin-top: auto;
+        background: var(--soft);
+        border-radius: 16px;
+        padding: 15px;
+        font-size: 12px;
+        color: var(--sub);
+      }
+      .sidebar-foot strong {
+        color: var(--ink);
+        display: block;
+        margin-bottom: 4px;
+      }
+      .content {
+        padding: 32px 42px 100px;
+        min-width: 0;
+      }
+      .topline {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 23px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--green);
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      h1 {
+        font-size: 31px;
+        line-height: 1.18;
+        letter-spacing: -1.1px;
+        margin-top: 5px;
+      }
+      h2 {
+        font-size: 19px;
+        letter-spacing: -0.45px;
+      }
+      h3 {
+        font-size: 15px;
+      }
+      .subtitle {
+        color: var(--sub);
+        margin-top: 8px;
+        font-size: 13px;
+      }
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 99px;
+        padding: 6px 10px;
+        color: var(--green-d);
+        background: var(--green-bg);
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .chip.neutral {
+        color: var(--sub);
+        background: var(--soft);
+      }
+      .chip.warn {
+        color: var(--amber);
+        background: var(--amber-bg);
+      }
+      .chip.danger {
+        color: var(--red);
+        background: var(--red-bg);
+      }
+      .chip.blue {
+        color: var(--blue);
+        background: #ebf2ff;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+      .panel + .panel {
+        margin-top: 14px;
+      }
+      .panel-head,
+      .flex-between {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .panel-head {
+        margin-bottom: 15px;
+      }
+      .muted {
+        color: var(--sub);
+      }
+      .small {
+        font-size: 12px;
+      }
+      .tiny {
+        font-size: 11px;
+      }
+      .strong {
+        font-weight: 750;
+      }
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .metric {
+        padding: 17px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--surface);
+      }
+      .metric strong {
+        font-size: 26px;
+        line-height: 1.2;
+        display: block;
+        letter-spacing: -0.7px;
+      }
+      .metric span {
+        font-size: 11px;
+        color: var(--sub);
+      }
+      .metric.red strong {
+        color: var(--red);
+      }
+      .metric.green strong {
+        color: var(--green);
+      }
+      .metric.amber strong {
+        color: var(--amber);
+      }
+      .list {
+        display: grid;
+        gap: 10px;
+      }
+      .dose {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 17px;
+        padding: 15px 16px;
+        display: grid;
+        grid-template-columns: 64px minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+      }
+      .dose.overdue {
+        border-left: 4px solid #d16d59;
+      }
+      .dose.taken {
+        border-left: 4px solid #4baf8f;
+      }
+      .dose.canceled {
+        opacity: 0.75;
+      }
+      .time-col {
+        font-size: 16px;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+        align-self: start;
+        padding-top: 2px;
+      }
+      .time-col em {
+        font-size: 10px;
+        display: block;
+        color: var(--sub);
+        font-weight: 450;
+        font-style: normal;
+        margin-top: 5px;
+      }
+      .dose-main {
+        min-width: 0;
+      }
+      .dose-name {
+        font-size: 15px;
+        font-weight: 750;
+        line-height: 1.35;
+      }
+      .dose-sub {
+        color: var(--sub);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      .dose-status {
+        margin-top: 8px;
+      }
+      .dose-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 10px 15px;
+        background: var(--green);
+        color: white;
+        font-weight: 750;
+        min-height: 40px;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .btn:hover:not(:disabled) {
+        filter: brightness(0.965);
+      }
+      .btn.secondary {
+        background: var(--surface);
+        color: var(--ink);
+        border-color: var(--line);
+      }
+      .btn.ghost {
+        background: transparent;
+        color: var(--sub);
+        border-color: transparent;
+      }
+      .btn.danger {
+        background: var(--red-bg);
+        color: var(--red);
+      }
+      .btn.smallbtn {
+        padding: 7px 11px;
+        min-height: 34px;
+        font-size: 12px;
+        border-radius: 10px;
+      }
+      .btn.full {
+        width: 100%;
+      }
+      .btn.iconbtn {
+        width: 40px;
+        padding: 0;
+      }
+      .section-label {
+        margin: 24px 0 12px;
+        font-size: 16px;
+        font-weight: 800;
+      }
+      .notice {
+        padding: 14px 16px;
+        background: #e9f5f3;
+        border: 1px solid #c9e4df;
+        border-radius: 15px;
+        color: #285b55;
+        font-size: 12px;
+      }
+      .notice.warn {
+        background: var(--amber-bg);
+        border-color: #f6deb0;
+        color: #81591d;
+      }
+      .notice.danger {
+        background: var(--red-bg);
+        border-color: #f2d4d1;
+        color: #85413c;
+      }
+      .notice strong {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 3px;
+      }
+      .helper {
+        font-size: 12px;
+        color: var(--sub);
+        margin-top: 7px;
+      }
+      .data-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .med-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+        display: grid;
+        gap: 12px;
+      }
+      .med-row {
+        display: flex;
+        gap: 12px;
+        align-items: start;
+      }
+      .med-icon {
+        background: var(--green-bg);
+        color: var(--green);
+        border-radius: 13px;
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+      }
+      .med-name {
+        font-weight: 800;
+        font-size: 16px;
+      }
+      .bar {
+        height: 8px;
+        background: var(--soft);
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .bar > span {
+        height: 100%;
+        background: var(--green);
+        display: block;
+        border-radius: 99px;
+      }
+      .bar.low > span {
+        background: #c88833;
+      }
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+      .detail-hero {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .detail-icon {
+        font-size: 30px;
+        width: 64px;
+        height: 64px;
+        display: grid;
+        place-items: center;
+        border-radius: 20px;
+        background: var(--green-bg);
+      }
+      .schedule-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--soft);
+        border-radius: 13px;
+        padding: 13px;
+        margin-top: 8px;
+      }
+      .schedule-row > div {
+        flex: 1;
+      }
+      .divider {
+        height: 1px;
+        background: var(--line);
+        margin: 16px 0;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 13px;
+      }
+      .field label {
+        font-size: 12px;
+        font-weight: 750;
+        color: var(--ink);
+      }
+      .control {
+        padding: 11px 13px;
+        border: 1px solid #cedbe3;
+        border-radius: 11px;
+        background: var(--surface);
+        color: var(--ink);
+        width: 100%;
+        min-width: 0;
+      }
+      .control:focus {
+        border-color: var(--green);
+        outline: 2px solid #b6e1d6;
+      }
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .form-grid > .field {
+        margin: 0;
+      }
+      .form-grid .span2 {
+        grid-column: span 2;
+      }
+      .choice-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .choice {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--line);
+        background: white;
+        border-radius: 11px;
+        padding: 9px 13px;
+        color: var(--sub);
+        font-weight: 750;
+      }
+      .choice.selected {
+        border-color: #9bcfc6;
+        background: var(--green-bg);
+        color: var(--green-d);
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+      }
+      .steps > span {
+        height: 5px;
+        background: var(--soft);
+        border-radius: 99px;
+      }
+      .steps > span.done {
+        background: var(--green);
+      }
+      .wizard-footer {
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        margin-top: 20px;
+      }
+      .slot-editor {
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        padding: 13px;
+        margin-bottom: 10px;
+      }
+      .calendar {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 5px;
+        margin-top: 14px;
+      }
+      .cal-weekday {
+        text-align: center;
+        color: var(--sub);
+        font-size: 11px;
+        font-weight: 800;
+        padding: 8px 0;
+      }
+      .cal-day {
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 12px;
+        height: 49px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-weight: 650;
+        min-width: 0;
+      }
+      .cal-day:hover {
+        background: var(--soft);
+      }
+      .cal-day.selected {
+        border-color: #8ebfb7;
+        background: var(--green-bg);
+        color: var(--green-d);
+      }
+      .dot {
+        height: 6px;
+        width: 6px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+      .dot.warn {
+        background: #d08e31;
+      }
+      .dot.blank {
+        background: #d4dee3;
+      }
+      .cal-legend {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        flex-wrap: wrap;
+        color: var(--sub);
+        font-size: 11px;
+        margin-top: 12px;
+      }
+      .cal-legend > span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .report-big {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .ring {
+        width: 112px;
+        height: 112px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+      }
+      .ring-inner {
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+        font-weight: 800;
+      }
+      .report-rows {
+        display: grid;
+        gap: 10px;
+      }
+      .report-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        padding: 8px 0;
+      }
+      .report-row:last-child {
+        border-bottom: 0;
+      }
+      .spark {
+        display: flex;
+        align-items: flex-end;
+        gap: 7px;
+        height: 128px;
+        padding: 10px 1px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .spark-col {
+        flex: 1;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: end;
+        gap: 5px;
+      }
+      .spark-bar {
+        width: 80%;
+        border-radius: 6px 6px 2px 2px;
+        background: #65baac;
+        min-height: 2px;
+      }
+      .spark-col small {
+        font-size: 10px;
+        color: var(--sub);
+        white-space: nowrap;
+      }
+      .timeline {
+        display: grid;
+        gap: 12px;
+      }
+      .event {
+        border-left: 2px solid #a8d4ce;
+        padding-left: 13px;
+        position: relative;
+      }
+      .event:before {
+        content: '';
+        position: absolute;
+        left: -5px;
+        top: 5px;
+        height: 8px;
+        width: 8px;
+        border: 2px solid var(--green);
+        background: var(--surface);
+        border-radius: 50%;
+      }
+      .event time {
+        color: var(--sub);
+        font-size: 11px;
+      }
+      .event div {
+        font-weight: 650;
+      }
+      .event p {
+        font-size: 12px;
+        color: var(--sub);
+        margin-top: 2px;
+      }
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(16, 35, 49, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        z-index: 50;
+        backdrop-filter: blur(3px);
+      }
+      .modal {
+        background: var(--surface);
+        border-radius: 22px;
+        padding: 22px;
+        width: 100%;
+        max-width: 475px;
+        max-height: 90vh;
+        overflow: auto;
+        box-shadow: 0 30px 100px rgba(0, 0, 0, 0.15);
+      }
+      .modal-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .modal-head h2 {
+        margin-top: 4px;
+      }
+      .toast {
+        position: fixed;
+        bottom: 25px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1b3339;
+        color: #fff;
+        border-radius: 13px;
+        padding: 11px 17px;
+        box-shadow: 0 12px 40px #0003;
+        z-index: 70;
+        max-width: calc(100vw - 30px);
+        text-align: center;
+      }
+      .empty {
+        text-align: center;
+        padding: 36px 22px;
+        color: var(--sub);
+        border: 1px dashed var(--line);
+        border-radius: 16px;
+      }
+      .empty .emoji {
+        font-size: 30px;
+        margin-bottom: 7px;
+      }
+      .demo-banner {
+        background: #eef7fe;
+        border: 1px solid #c5dff6;
+        color: #3b6482;
+        padding: 12px 15px;
+        border-radius: 14px;
+        font-size: 12px;
+        margin: 0 0 20px;
+      }
+      .demo-banner strong {
+        color: #264f70;
+        display: block;
+        margin-bottom: 3px;
+      }
+      .bottom-nav {
+        display: none;
+      }
+      .sim-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .sim-controls .control {
+        width: auto;
+        max-width: 240px;
+        padding: 8px;
+      }
+      .pill-alert {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 6px 10px;
+        background: var(--amber-bg);
+        border-radius: 99px;
+        color: var(--amber);
+      }
+      .plain-link {
+        border: 0;
+        background: transparent;
+        color: var(--green);
+        padding: 0;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      .help-quote {
+        border-left: 3px solid #99d1c9;
+        padding-left: 12px;
+        color: var(--sub);
+        font-size: 12px;
+      }
+      .kbd {
+        font-family: ui-monospace, monospace;
+        color: var(--sub);
+        font-size: 12px;
+      }
+      .nowrap {
+        white-space: nowrap;
+      }
+      @media (max-width: 940px) {
+        .app {
+          grid-template-columns: 200px minmax(0, 1fr);
+        }
+        .content {
+          padding: 25px 20px 100px;
+        }
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .dose {
+          grid-template-columns: 58px minmax(0, 1fr);
+          gap: 12px;
+        }
+        .dose-actions {
+          grid-column: 2;
+          justify-content: start;
+        }
+        .dose .btn {
+          min-width: 128px;
+        }
+      }
+      @media (max-width: 680px) {
+        .app {
+          display: block;
+        }
+        .sidebar {
+          display: none;
+        }
+        .content {
+          padding: 18px 14px 100px;
+        }
+        .topline {
+          margin-bottom: 16px;
+        }
+        .top-actions .chip.neutral {
+          display: none;
+        }
+        h1 {
+          font-size: 26px;
+        }
+        .panel {
+          padding: 16px;
+          border-radius: 17px;
+        }
+        .metrics {
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+        .metric {
+          padding: 13px;
+        }
+        .metric strong {
+          font-size: 23px;
+        }
+        .data-grid {
+          grid-template-columns: 1fr;
+        }
+        .dose {
+          padding: 13px 11px;
+          grid-template-columns: 52px minmax(0, 1fr);
+          gap: 9px;
+        }
+        .dose-name {
+          font-size: 14px;
+        }
+        .dose .btn {
+          width: 100%;
+          min-width: 0;
+        }
+        .dose-actions {
+          grid-column: 2;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          width: 100%;
+        }
+        .dose-actions .btn:only-child {
+          grid-column: span 2;
+        }
+        .dose-actions .btn {
+          padding: 8px 10px;
+        }
+        .bottom-nav {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: #ffffffed;
+          border-top: 1px solid var(--line);
+          box-shadow: 0 -12px 30px #1739430b;
+          padding: 7px 5px calc(7px + env(safe-area-inset-bottom));
+          z-index: 30;
+          backdrop-filter: blur(15px);
+        }
+        .bottom-nav .tab {
+          border: 0;
+          background: transparent;
+          padding: 7px 3px;
+          color: var(--sub);
+          display: grid;
+          place-items: center;
+          gap: 3px;
+          font-size: 10px;
+          border-radius: 10px;
+        }
+        .bottom-nav .tab.on {
+          color: var(--green);
+          background: var(--green-bg);
+          font-weight: 800;
+        }
+        .bottom-nav .tab b {
+          font-size: 19px;
+          line-height: 1;
+        }
+        .sim-controls .control {
+          max-width: 190px;
+          font-size: 12px;
+        }
+        .toast {
+          bottom: 86px;
+        }
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .btn,
+        .nav,
+        .cal-day {
+          transition:
+            background 0.15s,
+            filter 0.15s,
+            transform 0.15s;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-icon">✚</div>
+          <div><strong>Мои лекарства</strong><span>Telegram Mini App · концепт</span></div>
+        </div>
+        <nav id="desktop-nav" class="navigation" aria-label="Главная навигация"></nav>
+        <div class="sidebar-foot">
+          <strong>🧪 Только демонстрация</strong>Локальные тестовые данные. Бот, реальный сервер,
+          push-уведомления и медицинские рекомендации здесь не работают.
+        </div>
+      </aside>
+      <main class="content" id="main" tabindex="-1"></main>
+    </div>
+    <nav class="bottom-nav" id="bottom-nav" aria-label="Нижняя навигация"></nav>
+    <div id="overlays"></div>
+    <script>
+      'use strict'
+      /*
+       * FRONT-END DEMO / ЗАГЛУШКА БД
+       * Точка замены на настоящий backend — mockApi ниже. Сейчас все вызовы идут в
+       * browser localStorage и имитируют сервер. Нет сети, Telegram auth и push.
+       * Production: авторизованный JSON API, транзакции БД, UTC timestamps + TZ,
+       * централизованный scheduler и идемпотентные изменения.
+       */
+      const STORAGE_KEY = 'medtracker_miniapp_front_demo_v3'
+      const NAV = [
+        ['today', '⌂', 'Сегодня'],
+        ['meds', '◈', 'Лекарства'],
+        ['history', '▦', 'История'],
+        ['reports', '▥', 'Отчёты'],
+        ['settings', '⚙', 'Настройки'],
+      ]
+      const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+      const STATUS_LABEL = {
+        taken: 'Принято',
+        skipped: 'Пропущено',
+        canceled: 'Отменено',
+        overdue: 'Просрочено',
+        waiting: 'Ожидает',
+        future: 'Позже',
+      }
+      let state,
+        ui = {
+          view: 'today',
+          historyDate: null,
+          selectedMed: null,
+          modal: null,
+          wizard: null,
+          reportPeriod: 7,
+          reportMed: 'all',
+          toast: null,
+        }
+      const $ = (s) => document.querySelector(s)
+      const pad = (n) => String(n).padStart(2, '0')
+      const localISO = (d) =>
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+      const dateISO = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      const parseLocal = (s) => new Date(s.length === 10 ? s + 'T00:00' : s)
+      const addDays = (s, n) => {
+        const d = parseLocal(s)
+        d.setDate(d.getDate() + n)
+        return dateISO(d)
+      }
+      const niceDate = (s, opts = { day: 'numeric', month: 'long', year: 'numeric' }) =>
+        new Intl.DateTimeFormat('ru-RU', opts).format(parseLocal(s))
+      const dateShort = (s) =>
+        new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(parseLocal(s))
+      const logicalDate = (iso, cut = 4) => {
+        const d = parseLocal(iso)
+        if (d.getHours() < cut) d.setDate(d.getDate() - 1)
+        return dateISO(d)
+      }
+      const dow = (s) => (parseLocal(s).getDay() + 6) % 7
+      const addMinutes = (iso, n) => localISO(new Date(parseLocal(iso).getTime() + n * 60000))
+      const minutes = (s) => {
+        const [h, m] = s.split(':').map(Number)
+        return 60 * h + m
+      }
+      const validHH = (s) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s)
+      const html = (s) =>
+        String(s ?? '').replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]
+        )
+      const slugNum = (n) => Number(n).toLocaleString('ru-RU', { maximumFractionDigits: 2 })
+      const dayScheduleAt = (date, time, cut = 4) =>
+        `${minutes(time) < cut * 60 ? addDays(date, 1) : date}T${time}`
+      function deadlineFor(date, slot, cut = 4) {
+        let t = dayScheduleAt(date, slot.deadline, cut)
+        const start = dayScheduleAt(date, slot.time, cut)
+        if (parseLocal(t) <= parseLocal(start)) t = addMinutes(t, 24 * 60)
+        return t
+      }
+      function makeSeed() {
+        const base = logicalDate(localISO(new Date()))
+        const d = addDays(base, -7)
+        const demoNow = base + 'T14:10'
+        const meds = [
+          {
+            id: 'm1',
+            name: 'Препарат А',
+            unit: 'табл.',
+            strength: '',
+            stock: 58,
+            threshold: 7,
+            mode: 'daily',
+            weekdays: [0, 1, 2, 3, 4, 5, 6],
+            start: d,
+            end: null,
+            endedAt: null,
+            pauses: [],
+            slots: [
+              { id: 's11', name: 'Утро', time: '08:00', deadline: '09:00', qty: 1 },
+              { id: 's12', name: 'Вечер', time: '20:00', deadline: '21:30', qty: 1 },
+            ],
+          },
+          {
+            id: 'm2',
+            name: 'Препарат Б',
+            unit: 'капс.',
+            strength: '',
+            stock: 34,
+            threshold: 7,
+            mode: 'daily',
+            weekdays: [0, 1, 2, 3, 4, 5, 6],
+            start: d,
+            end: null,
+            endedAt: null,
+            pauses: [],
+            slots: [{ id: 's21', name: 'Утро', time: '10:00', deadline: '11:00', qty: 2 }],
+          },
+          {
+            id: 'm3',
+            name: 'Препарат В',
+            unit: 'табл.',
+            strength: '',
+            stock: 22,
+            threshold: 5,
+            mode: 'course',
+            weekdays: [0, 1, 2, 3, 4, 5, 6],
+            start: addDays(base, -5),
+            end: addDays(base, 15),
+            endedAt: null,
+            pauses: [],
+            slots: [{ id: 's31', name: 'После обеда', time: '14:00', deadline: '16:00', qty: 1 }],
+          },
+          {
+            id: 'm4',
+            name: 'Препарат Г',
+            unit: 'доза',
+            strength: '',
+            stock: 12,
+            threshold: 8,
+            mode: 'weekly',
+            weekdays: [dow(base)],
+            start: d,
+            end: null,
+            endedAt: null,
+            pauses: [],
+            slots: [{ id: 's41', name: 'Ночь', time: '01:30', deadline: '02:15', qty: 1 }],
+          },
+        ]
+        const s = {
+          version: 3,
+          baseDate: base,
+          demoNow,
+          medicines: meds,
+          doses: [],
+          ledger: [],
+          audit: [],
+          notifications: [],
+          settings: {
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Berlin',
+            cut: 4,
+            repeats: 5,
+            repeatEvery: 15,
+          },
+        }
+        meds.forEach((m) =>
+          s.ledger.push({
+            id: rid(),
+            medicineId: m.id,
+            at: demoNow,
+            delta: m.stock,
+            kind: 'Начальный остаток',
+            note: 'Демонстрационные данные',
+          })
+        )
+        for (let n = -7; n <= 0; n++) {
+          const dt = addDays(base, n)
+          ensureDate(s, dt)
+          if (n === 0) continue
+          s.doses
+            .filter((x) => x.logicalDate === dt)
+            .forEach((dose, i) => {
+              const med = meds.find((m) => m.id === dose.medicineId)
+              const k = Math.abs(n * 5 + i * 3)
+              if (k % 11 === 0) {
+                dose.status = 'skipped'
+                dose.recordedAt = addMinutes(dose.deadlineAt, 10)
+              } else if (k % 9 === 0) {
+                /* неизвестно, принято или нет */
+              } else {
+                dose.status = 'taken'
+                dose.takenAt = addMinutes(dose.scheduledAt, k % 5 === 0 ? 75 : 20)
+                dose.recordedAt = dose.takenAt
+                dose.actualQty = dose.plannedQty
+                med.stock -= dose.plannedQty
+                s.ledger.push({
+                  id: rid(),
+                  medicineId: med.id,
+                  doseId: dose.id,
+                  at: dose.recordedAt,
+                  delta: -dose.plannedQty,
+                  kind: 'Приём',
+                  note: 'Демонстрационная история',
+                })
+              }
+            })
+        }
+        const first = s.doses.find(
+          (x) => x.logicalDate === base && x.medicineId === 'm1' && x.slotId === 's11'
+        )
+        if (first) {
+          first.status = 'taken'
+          first.takenAt = base + 'T08:23'
+          first.recordedAt = first.takenAt
+          first.actualQty = 1
+          meds[0].stock -= 1
+          s.ledger.push({
+            id: rid(),
+            medicineId: 'm1',
+            doseId: first.id,
+            at: first.recordedAt,
+            delta: -1,
+            kind: 'Приём',
+            note: 'Пример подтверждения',
+          })
+        }
+        return s
+      }
+      function rid() {
+        return 'id' + Math.random().toString(36).slice(2, 10)
+      }
+      function pauseContains(med, at) {
+        return med.pauses?.some(
+          (p) =>
+            parseLocal(p.from) <= parseLocal(at) && (!p.to || parseLocal(at) < parseLocal(p.to))
+        )
+      }
+      function ensureDate(s, date) {
+        let changed = false
+        for (const m of s.medicines) {
+          if (
+            date < m.start ||
+            (m.end && date > m.end) ||
+            (m.mode === 'weekly' && !m.weekdays.includes(dow(date)))
+          )
+            continue
+          for (const slot of m.slots) {
+            const id = `${m.id}|${date}|${slot.id}`
+            if (s.doses.some((x) => x.id === id)) continue
+            const scheduledAt = dayScheduleAt(date, slot.time, s.settings.cut)
+            if (m.endedAt && parseLocal(scheduledAt) >= parseLocal(m.endedAt)) continue
+            const canceled = pauseContains(m, scheduledAt)
+            s.doses.push({
+              id,
+              medicineId: m.id,
+              slotId: slot.id,
+              slotName: slot.name || 'Приём',
+              logicalDate: date,
+              scheduledAt,
+              deadlineAt: deadlineFor(date, slot, s.settings.cut),
+              plannedQty: Number(slot.qty),
+              status: canceled ? 'canceled' : 'pending',
+              cancelReason: canceled ? 'Пауза' : null,
+              takenAt: null,
+              timeUnknown: false,
+              recordedAt: null,
+              actualQty: 0,
+              notificationStep: -1,
+            })
+            changed = true
+          }
+        }
+        return changed
+      }
+      function save() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+        } catch (e) {
+          console.warn('localStorage unavailable', e)
+        }
+      }
+      function init() {
+        try {
+          state = JSON.parse(localStorage.getItem(STORAGE_KEY))
+        } catch (e) {}
+        if (!state || state.version !== 3) state = makeSeed()
+        ui.historyDate = logicalDate(state.demoNow, state.settings.cut)
+        save()
+        render()
+      }
+      const wait = () => new Promise((r) => setTimeout(r, 65))
+      function audit(action, entityId, note, before = null, after = null) {
+        state.audit.unshift({ id: rid(), at: state.demoNow, action, entityId, note, before, after })
+      }
+      function addLedger(medicineId, doseId, delta, kind, note = '') {
+        if (Math.abs(delta) < 0.0000001) return
+        const med = state.medicines.find((m) => m.id === medicineId)
+        med.stock = Math.round((med.stock + delta) * 1000) / 1000
+        state.ledger.unshift({
+          id: rid(),
+          medicineId,
+          doseId,
+          delta,
+          kind,
+          at: state.demoNow,
+          note,
+        })
+      }
+      function doseStatus(d) {
+        if (d.status !== 'pending') return d.status
+        if (parseLocal(state.demoNow) >= parseLocal(d.deadlineAt)) return 'overdue'
+        if (parseLocal(state.demoNow) >= parseLocal(d.scheduledAt)) return 'waiting'
+        return 'future'
+      }
+      function listed(date, includeCanceled = false) {
+        if (ensureDate(state, date)) save()
+        return state.doses
+          .filter((d) => d.logicalDate === date && (includeCanceled || d.status !== 'canceled'))
+          .sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt) || a.id.localeCompare(b.id))
+      }
+      function medBy(id) {
+        return state.medicines.find((m) => m.id === id)
+      }
+      function doseBy(id) {
+        return state.doses.find((d) => d.id === id)
+      }
+      function actualLabel(d) {
+        if (d.status !== 'taken') return ''
+        if (d.timeUnknown) return 'Принято · точное время неизвестно'
+        return (
+          'Принято в ' +
+          d.takenAt.slice(11, 16) +
+          (d.takenAt.slice(0, 10) !== d.logicalDate ? ' · ' + dateShort(d.takenAt) : '')
+        )
+      }
+      function currentDay() {
+        return logicalDate(state.demoNow, state.settings.cut)
+      }
+      function currentPaused(m) {
+        return pauseContains(m, state.demoNow)
+      }
+      function medStatus(m) {
+        if (m.endedAt && parseLocal(state.demoNow) >= parseLocal(m.endedAt)) return 'Завершён'
+        if (currentPaused(m)) return 'Пауза'
+        if (m.end && currentDay() > m.end) return 'Курс окончен'
+        return 'Активен'
+      }
+      function auditRowsFor(id) {
+        return state.audit.filter((a) => a.entityId === id)
+      }
+      /* API ЗАГЛУШКИ. Заменить методы на fetch('/api/...') и ответы сервера. */
+      const mockApi = {
+        async confirmDose(id) {
+          await wait()
+          const d = doseBy(id)
+          if (!d || d.status === 'canceled') throw Error('Приём недоступен')
+          if (d.status === 'taken') return false
+          if (d.status === 'skipped') throw Error('Сначала исправь явно пропущенный приём')
+          const old = d.status
+          d.status = 'taken'
+          d.timeUnknown = false
+          d.takenAt = state.demoNow
+          d.recordedAt = state.demoNow
+          d.actualQty = d.plannedQty
+          addLedger(d.medicineId, d.id, -d.actualQty, 'Приём')
+          audit(
+            'Принято',
+            d.id,
+            `${slugNum(d.actualQty)} ${medBy(d.medicineId).unit}`,
+            old,
+            'taken'
+          )
+          save()
+          return true
+        },
+        async skipDose(id) {
+          await wait()
+          const d = doseBy(id)
+          if (!d || d.status === 'canceled') throw Error('Приём недоступен')
+          if (d.status !== 'pending') throw Error('Для изменения открой редактор')
+          d.status = 'skipped'
+          d.recordedAt = state.demoNow
+          audit('Пропущено', d.id, 'Приём явно отмечен как пропущенный', 'pending', 'skipped')
+          save()
+        },
+        async correctDose(id, patch) {
+          await wait()
+          const d = doseBy(id)
+          if (!d) throw Error('Приём не найден')
+          const old = {
+            status: d.status,
+            actualQty: d.actualQty,
+            takenAt: d.takenAt,
+            timeUnknown: d.timeUnknown,
+          }
+          const newStatus = patch.status
+          const n = newStatus === 'taken' ? Number(patch.qty) : 0
+          if (newStatus === 'taken' && !(n > 0)) throw Error('Количество должно быть больше нуля')
+          if (newStatus === 'taken' && !patch.unknown && !patch.takenAt)
+            throw Error('Нужно указать время или отметить, что оно неизвестно')
+          const delta = (d.status === 'taken' ? Number(d.actualQty) : 0) - n
+          if (delta)
+            addLedger(
+              d.medicineId,
+              d.id,
+              delta,
+              'Исправление приёма',
+              'Компенсация учтённого количества'
+            )
+          d.status = newStatus
+          d.actualQty = n
+          d.timeUnknown = newStatus === 'taken' && !!patch.unknown
+          d.takenAt = newStatus === 'taken' && !patch.unknown ? patch.takenAt : null
+          d.recordedAt = state.demoNow
+          const next = {
+            status: d.status,
+            actualQty: d.actualQty,
+            takenAt: d.takenAt,
+            timeUnknown: d.timeUnknown,
+          }
+          if (JSON.stringify(old) !== JSON.stringify(next))
+            audit('Исправление приёма', d.id, 'Время, количество или статус', old, next)
+          save()
+        },
+        async stock(id, kind, amount, note) {
+          await wait()
+          const m = medBy(id)
+          if (!m) throw Error('Препарат не найден')
+          const delta = kind === 'recount' ? Number(amount) - m.stock : Number(amount)
+          if (
+            !Number.isFinite(delta) ||
+            (kind !== 'recount' && delta <= 0) ||
+            (kind === 'recount' && Number(amount) < 0)
+          )
+            throw Error('Проверь количество')
+          addLedger(id, null, delta, kind === 'recount' ? 'Пересчёт' : 'Пополнение', note)
+          audit(
+            kind === 'recount' ? 'Пересчёт запасов' : 'Пополнение запасов',
+            id,
+            `${delta >= 0 ? '+' : ''}${slugNum(delta)} ${m.unit}`
+          )
+          save()
+        },
+        async addMed(m) {
+          await wait()
+          if (!m.name.trim() || !m.slots.length) throw Error('Укажи название и хотя бы один приём')
+          const id = rid()
+          state.medicines.push({
+            ...m,
+            id,
+            endedAt: null,
+            pauses: [],
+            stock: Number(m.stock),
+            threshold: Number(m.threshold),
+          })
+          state.ledger.unshift({
+            id: rid(),
+            medicineId: id,
+            delta: Number(m.stock),
+            kind: 'Начальный остаток',
+            at: state.demoNow,
+          })
+          audit('Добавлен препарат', id, m.name)
+          ensureDate(state, currentDay())
+          save()
+          return id
+        },
+        async pauseMed(id, pause) {
+          await wait()
+          const m = medBy(id)
+          m.pauses.push(pause)
+          let canceled = 0
+          state.doses.forEach((d) => {
+            if (
+              d.medicineId === id &&
+              d.status === 'pending' &&
+              parseLocal(d.scheduledAt) > parseLocal(state.demoNow) &&
+              pauseContains(m, d.scheduledAt)
+            ) {
+              d.status = 'canceled'
+              d.cancelReason = 'Пауза'
+              canceled++
+            }
+          })
+          audit('Пауза', id, `Будущих приёмов отменено: ${canceled}`, null, pause)
+          save()
+          return canceled
+        },
+        async resumeMed(id) {
+          await wait()
+          const m = medBy(id)
+          const now = state.demoNow
+          for (const p of m.pauses) {
+            if (
+              parseLocal(p.from) <= parseLocal(now) &&
+              (!p.to || parseLocal(p.to) > parseLocal(now))
+            )
+              p.to = now
+          }
+          let restored = 0
+          state.doses.forEach((d) => {
+            if (
+              d.medicineId === id &&
+              d.status === 'canceled' &&
+              d.cancelReason === 'Пауза' &&
+              parseLocal(d.scheduledAt) > parseLocal(now) &&
+              !pauseContains(m, d.scheduledAt)
+            ) {
+              d.status = 'pending'
+              d.cancelReason = null
+              restored++
+            }
+          })
+          audit('Возобновление', id, `Будущих приёмов восстановлено: ${restored}`)
+          save()
+        },
+        async endMed(id) {
+          await wait()
+          const m = medBy(id)
+          m.endedAt = state.demoNow
+          let n = 0
+          state.doses.forEach((d) => {
+            if (
+              d.medicineId === id &&
+              d.status === 'pending' &&
+              parseLocal(d.scheduledAt) > parseLocal(state.demoNow)
+            ) {
+              d.status = 'canceled'
+              d.cancelReason = 'Завершение курса'
+              n++
+            }
+          })
+          audit('Завершение курса', id, `Будущих приёмов отменено: ${n}`)
+          save()
+        },
+        async editSlot(medId, slot) {
+          await wait()
+          const m = medBy(medId)
+          const ix = m.slots.findIndex((x) => x.id === slot.id)
+          if (ix < 0) m.slots.push(slot)
+          else m.slots[ix] = slot
+          /* В этом фронтенд-макете не реализовано полноценное версионирование. */
+          const now = parseLocal(state.demoNow)
+          state.doses = state.doses.filter(
+            (d) =>
+              !(d.medicineId === medId && d.status === 'pending' && parseLocal(d.scheduledAt) > now)
+          )
+          ensureDate(state, currentDay())
+          audit(
+            'Изменено расписание',
+            medId,
+            'Будущие неподтверждённые записи пересозданы. В production нужна версия расписания.'
+          )
+          save()
+        },
+        async simulateNotifications() {
+          await wait()
+          let newCount = 0
+          const now = parseLocal(state.demoNow).getTime()
+          for (const d of state.doses) {
+            if (d.status !== 'pending') continue
+            const dead = parseLocal(d.deadlineAt).getTime()
+            if (now < dead) continue
+            const repeat = state.settings.repeatEvery * 60000
+            const step = Math.min(state.settings.repeats, Math.floor((now - dead) / repeat))
+            if (step <= d.notificationStep) continue
+            d.notificationStep = step
+            state.notifications.unshift({
+              id: rid(),
+              doseId: d.id,
+              step,
+              at: state.demoNow,
+              kind: 'Демо: уведомление о просрочке',
+            })
+            newCount++
+          }
+          if (newCount)
+            audit('Проверка уведомлений', 'system', `Смоделировано сообщений: ${newCount}`)
+          save()
+          return newCount
+        },
+        async reset() {
+          await wait()
+          state = makeSeed()
+          ui.historyDate = currentDay()
+          ui.view = 'today'
+          ui.modal = null
+          save()
+        },
+      }
+      function badge(status) {
+        const kind =
+          status === 'taken'
+            ? ''
+            : status === 'overdue'
+              ? 'danger'
+              : status === 'skipped'
+                ? 'warn'
+                : 'neutral'
+        return `<span class="chip ${kind}">${html(STATUS_LABEL[status] || status)}</span>`
+      }
+      function iconHeader(title, sub, extra = '') {
+        return `<div class="topline"><div><div class="eyebrow">МОИ ЛЕКАРСТВА · MINI APP</div><h1>${html(title)}</h1>${sub ? `<p class="subtitle">${sub}</p>` : ''}</div><div class="top-actions">${extra}<button class="btn secondary iconbtn" data-action="nav" data-view="settings" aria-label="Настройки">⚙</button></div></div>`
+      }
+      function renderNav() {
+        const makeNav = (item, bot = false) =>
+          `<button class="${bot ? 'tab' : 'nav'} ${ui.view === item[0] || (ui.view === 'med-detail' && item[0] === 'meds') || (ui.view === 'wizard' && item[0] === 'meds') ? 'active ' + (bot ? 'on' : '') : ''}" data-action="nav" data-view="${item[0]}"><${bot ? 'b' : 'span'} class="${bot ? '' : 'ico'}">${item[1]}</${bot ? 'b' : 'span'}><span>${item[2]}</span></button>`
+        $('#desktop-nav').innerHTML = NAV.map((x) => makeNav(x)).join('')
+        $('#bottom-nav').innerHTML = NAV.slice(0, 4)
+          .map((x) => makeNav(x, true))
+          .join('')
+      }
+      function medTitle(m) {
+        return m ? html(m.name) : 'Удалённый препарат'
+      }
+      function futureDayLabel(d) {
+        const sd = d.scheduledAt.slice(0, 10)
+        return sd === d.logicalDate ? '' : `<em>${html(dateShort(sd))}<br>след. день</em>`
+      }
+      function doseCard(d, inHistory = false) {
+        const m = medBy(d.medicineId),
+          status = doseStatus(d),
+          c =
+            status === 'overdue'
+              ? 'overdue'
+              : status === 'taken'
+                ? 'taken'
+                : status === 'canceled'
+                  ? 'canceled'
+                  : ''
+        const extra =
+          status === 'taken'
+            ? `<span class="small" style="color:var(--green)">✓ ${html(actualLabel(d))}</span>`
+            : status === 'skipped'
+              ? '<span class="small muted">Явно отмечен пропуск</span>'
+              : status === 'canceled'
+                ? '<span class="small muted">Не входит в план</span>'
+                : ''
+        let actions =
+          status === 'canceled'
+            ? `<button class="btn smallbtn secondary" data-action="doseModal" data-id="${html(d.id)}">История</button>`
+            : status === 'taken' || status === 'skipped'
+              ? `<button class="btn smallbtn secondary" data-action="doseModal" data-id="${html(d.id)}">Изменить</button>`
+              : inHistory
+                ? `<button class="btn smallbtn secondary" data-action="doseModal" data-id="${html(d.id)}">${d.logicalDate > currentDay() ? 'Подробнее' : 'Уточнить факт'}</button>`
+                : `<button class="btn smallbtn" data-action="take" data-id="${html(d.id)}">✓ Принял</button><button class="btn smallbtn secondary" data-action="doseModal" data-id="${html(d.id)}">Ещё</button>`
+        return `<article class="dose ${c}"><div class="time-col">${html(d.scheduledAt.slice(11, 16))}${futureDayLabel(d)}</div><div class="dose-main"><div class="dose-name">${medTitle(m)} <span class="small muted">· ${html(d.slotName)}</span></div><div class="dose-sub">${slugNum(d.plannedQty)} ${html(m?.unit || 'ед.')} · дедлайн ${html(d.deadlineAt.slice(11, 16))}${d.deadlineAt.slice(0, 10) !== d.scheduledAt.slice(0, 10) ? ' · ' + html(dateShort(d.deadlineAt)) : ''}</div><div class="dose-status">${badge(status)} ${extra}</div></div><div class="dose-actions">${actions}</div></article>`
+      }
+      function renderToday() {
+        const day = currentDay()
+        const d = listed(day)
+        const planned = d.filter((x) => x.status !== 'canceled')
+        const nTaken = planned.filter((x) => x.status === 'taken').length,
+          nOver = planned.filter((x) => doseStatus(x) === 'overdue').length,
+          nWait = planned.filter((x) => doseStatus(x) === 'waiting').length,
+          nSkipped = planned.filter((x) => x.status === 'skipped').length
+        const time = `<div class="sim-controls"><span class="tiny muted">Демо-часы:</span><input class="control" type="datetime-local" id="clock" value="${html(state.demoNow)}" aria-label="Демонстрационное время"><button class="btn secondary smallbtn" data-action="clockPlus">+15 мин</button></div>`
+        return `${iconHeader('Сегодня', `${niceDate(day)} · логический день с 04:00 до 03:59`, '<span class="chip neutral">🧪 Демо</span>')}
+ <div class="demo-banner"><strong>Интерактивный UX-макет</strong>Данные остаются в этом браузере. Меняй демонстрационное время, нажимай «Принял» и проверяй статусы — без реальных уведомлений.</div>
+ <div class="metrics"><div class="metric green"><strong>${nTaken}/${planned.length}</strong><span>Подтверждено</span></div><div class="metric red"><strong>${nOver}</strong><span>Просрочено</span></div><div class="metric amber"><strong>${nWait}</strong><span>Ожидает</span></div><div class="metric"><strong>${nSkipped}</strong><span>Пропущено</span></div></div>
+ <section class="panel"><div class="panel-head"><h2>Часы и проверка уведомлений</h2></div>${time}<p class="helper">Ниже хронология по плановому времени. Переход в 04:00 изменяет «Сегодня», но не переписывает старые приёмы.</p><div style="margin-top:12px"><button class="btn secondary smallbtn" data-action="scan">🔔 Смоделировать уведомления о просрочке</button></div></section>
+ <h2 class="section-label">Приёмы · по времени</h2>${d.length ? `<div class="list">${d.map((x) => doseCard(x)).join('')}</div>` : `<div class="empty"><div class="emoji">☀️</div>На этот логический день приёмов нет.</div>`}
+ <div class="notice" style="margin-top:15px"><strong>Ночные приёмы после полуночи</strong>Например, 01:30 следующей календарной даты показывается в конце списка предыдущего логического дня. Ранее просроченные приёмы доступны в «Истории», не здесь.</div>`
+      }
+      function medForecast(m) {
+        if (m.endedAt) return 'Курс завершён'
+        let dates = 0,
+          days = 0
+        for (let i = 0; i < 90; i++) {
+          const date = addDays(currentDay(), i)
+          if (
+            date < m.start ||
+            (m.end && date > m.end) ||
+            (m.mode === 'weekly' && !m.weekdays.includes(dow(date)))
+          )
+            continue
+          const qty = m.slots.reduce((a, s) => a + Number(s.qty), 0)
+          if (qty <= 0) continue
+          days++
+          dates += qty
+          if (dates > m.stock) return `примерно ${i} дн. до исчерпания`
+        }
+        return days === 0
+          ? 'Нет будущих приёмов'
+          : m.stock > dates
+            ? 'Запас больше 90-дневного расхода'
+            : 'Остатка хватит на период курса'
+      }
+      function renderMeds() {
+        const cards = state.medicines
+          .map((m) => {
+            const st = medStatus(m),
+              low = m.stock <= m.slots.reduce((a, s) => a + Number(s.qty), 0) * m.threshold
+            return `<article class="med-card"><div class="med-row"><div class="med-icon">💊</div><div style="flex:1"><div class="med-name">${medTitle(m)}</div><div class="small muted">${m.mode === 'daily' ? 'Ежедневно' : m.mode === 'weekly' ? m.weekdays.map((i) => WEEKDAYS[i]).join(', ') : 'Курс до ' + niceDate(m.end)} · ${m.slots.length} приём(а)</div></div><span class="chip ${st === 'Активен' ? '' : st === 'Пауза' ? 'warn' : 'neutral'}">${st}</span></div><div class="flex-between"><div><div class="tiny muted">В наличии</div><strong style="font-size:23px">${slugNum(m.stock)} <span class="small muted">${html(m.unit)}</span></strong></div>${low ? '<span class="pill-alert">⚠ Мало осталось</span>' : ''}</div><div class="bar ${low ? 'low' : ''}"><span style="width:${Math.max(3, Math.min(100, (m.stock / 60) * 100))}%"></span></div><div class="small muted">${html(medForecast(m))}</div><button class="btn secondary full" data-action="openMed" data-id="${html(m.id)}">Открыть препарат →</button></article>`
+          })
+          .join('')
+        return `${iconHeader('Лекарства', 'Карточки, расписания, паузы и остатки')}<div class="flex-between" style="margin:18px 0"><div class="small muted">Препаратов: ${state.medicines.length}</div><button class="btn" data-action="newMed">+ Добавить препарат</button></div><div class="data-grid">${cards}</div>`
+      }
+      function renderMedDetail() {
+        const m = medBy(ui.selectedMed)
+        if (!m) return renderMeds()
+        const st = medStatus(m),
+          low = m.stock <= m.slots.reduce((a, s) => a + Number(s.qty), 0) * m.threshold
+        const movements = state.ledger.filter((x) => x.medicineId === m.id).slice(0, 5)
+        return `${iconHeader(m.name, `${m.mode === 'daily' ? 'Ежедневно' : m.mode === 'weekly' ? m.weekdays.map((i) => WEEKDAYS[i]).join(' · ') : 'Курс до ' + niceDate(m.end)} · ${html(m.unit)}`)}<button class="btn ghost smallbtn" data-action="nav" data-view="meds">← Все лекарства</button>
+ <div class="data-grid" style="margin-top:12px"><section class="panel"><div class="detail-hero"><div class="detail-icon">💊</div><div><h2>${medTitle(m)}</h2><div class="small muted">${html(m.strength || 'Сила препарата не указана')}</div><div style="margin-top:8px"><span class="chip ${st === 'Активен' ? '' : st === 'Пауза' ? 'warn' : 'neutral'}">${st}</span></div></div></div><div class="flex-between" style="margin:20px 0 8px"><div><div class="small muted">Учётный запас</div><div style="font-size:28px;font-weight:800">${slugNum(m.stock)} <span class="small muted">${html(m.unit)}</span></div></div>${low ? '<span class="chip warn">Малый запас</span>' : ''}</div><p class="small muted">${html(medForecast(m))}</p><div class="form-grid" style="margin-top:17px"><button class="btn secondary" data-action="stockModal" data-id="${m.id}" data-kind="add">+ Пополнить</button><button class="btn secondary" data-action="stockModal" data-id="${m.id}" data-kind="recount">Пересчитать</button></div></section>
+ <section class="panel"><h2>Управление курсом</h2><p class="helper">Пауза отменяет только будущие приёмы, уже наступившие сохраняются.</p><div class="stack" style="margin-top:17px">${st === 'Пауза' ? `<button class="btn" data-action="resume" data-id="${m.id}">▶ Возобновить сейчас</button>` : st === 'Активен' ? `<button class="btn secondary" data-action="pauseModal" data-id="${m.id}">Ⅱ Приостановить</button>` : ''}<button class="btn secondary" data-action="endModal" data-id="${m.id}" ${m.endedAt ? 'disabled' : ''}>⚑ Завершить курс</button></div><div class="divider"></div><h3>Период курса</h3><div class="small muted" style="margin-top:7px">С ${niceDate(m.start)}${m.end ? ' по ' + niceDate(m.end) : ' · без даты окончания'}</div><div class="small muted" style="margin-top:6px">Порог запаса: ${m.threshold} дн.</div></section></div>
+ <section class="panel" style="margin-top:16px"><div class="panel-head"><h2>Время приёмов и дедлайны</h2><button class="btn secondary smallbtn" data-action="slotModal" data-id="${m.id}" data-slot="new" ${m.endedAt ? 'disabled' : ''}>+ Приём</button></div>${m.slots.map((s) => `<div class="schedule-row"><div><strong>${html(s.name || 'Приём')} · ${html(s.time)}</strong><p class="small muted">Дедлайн: ${html(s.deadline)} · ${slugNum(s.qty)} ${html(m.unit)}</p></div><button class="btn secondary smallbtn" data-action="slotModal" data-id="${m.id}" data-slot="${html(s.id)}" ${m.endedAt ? 'disabled' : ''}>Изменить</button></div>`).join('')}<p class="helper">Демонстрационное изменение обновляет будущие незакрытые записи. В рабочей версии потребуется версионирование расписаний.</p></section>
+ <section class="panel"><h2>Последние движения запасов</h2><div class="stack" style="margin-top:14px">${movements.map((l) => `<div class="flex-between small"><div>${html(l.kind)}<div class="tiny muted">${html(l.at.replace('T', ' · '))}</div></div><strong style="color:${l.delta < 0 ? 'var(--red)' : 'var(--green)'}">${l.delta > 0 ? '+' : ''}${slugNum(l.delta)} ${html(m.unit)}</strong></div>`).join('') || '<p class="muted">Записей нет</p>'}</div></section>
+ <section class="panel"><div class="panel-head"><h2>История изменения препарата</h2></div>${renderEvents(auditRowsFor(m.id).slice(0, 5))}</section>`
+      }
+      function renderEvents(events) {
+        return events.length
+          ? `<div class="timeline">${events.map((e) => `<div class="event"><time>${html(e.at.replace('T', ' · '))}</time><div>${html(e.action)}</div><p>${html(e.note || '')}</p></div>`).join('')}</div>`
+          : '<p class="small muted">Записей пока нет.</p>'
+      }
+      function defaultWizard() {
+        return {
+          step: 0,
+          name: '',
+          unit: 'табл.',
+          strength: '',
+          mode: 'daily',
+          weekdays: [0, 1, 2, 3, 4, 5, 6],
+          course: 'permanent',
+          start: currentDay(),
+          end: addDays(currentDay(), 14),
+          slots: [{ id: rid(), name: 'Утро', time: '08:00', deadline: '09:00', qty: 1 }],
+          stock: 30,
+          threshold: 7,
+        }
+      }
+      function field(label, id, value, type = 'text', extra = '') {
+        return `<div class="field"><label for="${html(id)}">${html(label)}</label><input class="control" id="${html(id)}" ${extra} type="${type}" value="${html(value)}" data-wizard-field="${html(id)}"></div>`
+      }
+      function wizardValidation(w) {
+        if (w.step === 0) return !!w.name.trim()
+        if (w.step === 1)
+          return (
+            (w.mode !== 'weekly' || w.weekdays.length > 0) &&
+            (w.course !== 'limited' || w.end >= w.start)
+          )
+        if (w.step === 2)
+          return (
+            w.slots.length > 0 &&
+            w.slots.every((s) => validHH(s.time) && validHH(s.deadline) && Number(s.qty) > 0)
+          )
+        if (w.step === 3)
+          return (
+            Number(w.stock) >= 0 && Number.isFinite(Number(w.stock)) && Number(w.threshold) >= 0
+          )
+        return true
+      }
+      function renderWizard() {
+        const w = ui.wizard || defaultWizard()
+        ui.wizard = w
+        const labels = ['Препарат', 'Периодичность', 'Приёмы', 'Запасы', 'Проверка']
+        let body = ''
+        if (w.step === 0)
+          body = `${field('Название лекарства', 'name', w.name, 'text', 'placeholder="Например, Препарат Д"')}
+ <div class="field"><label>Единица учёта</label><select class="control" data-wizard-field="unit"><option value="табл." ${w.unit === 'табл.' ? 'selected' : ''}>Таблетки</option><option value="капс." ${w.unit === 'капс.' ? 'selected' : ''}>Капсулы</option><option value="мл" ${w.unit === 'мл' ? 'selected' : ''}>Миллилитры</option><option value="доза" ${w.unit === 'доза' ? 'selected' : ''}>Дозы</option></select></div>${field('Сила одной единицы (необязательно)', 'strength', w.strength, 'text', 'placeholder="Например, 10 мг"')}<p class="helper">Название и сила препарата — справочные поля. Доза каждого приёма задаётся отдельно.</p>`
+        if (w.step === 1)
+          body = `<div class="field"><label>Повторение</label><div class="choice-row"><button class="choice ${w.mode === 'daily' ? 'selected' : ''}" data-action="wMode" data-value="daily">Ежедневно</button><button class="choice ${w.mode === 'weekly' ? 'selected' : ''}" data-action="wMode" data-value="weekly">По дням недели</button></div></div>${w.mode === 'weekly' ? `<div class="field"><label>Выбери дни недели</label><div class="choice-row">${WEEKDAYS.map((day, i) => `<button class="choice ${w.weekdays.includes(i) ? 'selected' : ''}" data-action="wDay" data-day="${i}">${day}</button>`).join('')}</div></div>` : ''}<div class="divider"></div><div class="field"><label>Длительность</label><div class="choice-row"><button class="choice ${w.course === 'permanent' ? 'selected' : ''}" data-action="wCourse" data-value="permanent">Постоянно</button><button class="choice ${w.course === 'limited' ? 'selected' : ''}" data-action="wCourse" data-value="limited">Ограниченный курс</button></div></div>${field('Дата начала', 'start', w.start, 'date')}${w.course === 'limited' ? field('Последний день курса', 'end', w.end, 'date') : ''}<p class="helper">Для расписания по дням недели выбираются дни логического дня (с 04:00).</p>`
+        if (w.step === 2)
+          body = `<p class="small muted" style="margin-bottom:15px">Для каждого времени задаются индивидуальные доза и дедлайн. Дедлайн может перейти через полночь.</p>${w.slots.map((s, i) => `<div class="slot-editor"><div class="flex-between" style="margin-bottom:10px"><strong>Приём ${i + 1}</strong><button class="btn ghost smallbtn" data-action="wRemoveSlot" data-id="${html(s.id)}">Удалить</button></div><div class="form-grid"><div class="field span2"><label>Подпись (необязательно)</label><input class="control" data-slot-field="name" data-slotid="${html(s.id)}" value="${html(s.name)}"></div><div class="field"><label>Время</label><input class="control" type="time" data-slot-field="time" data-slotid="${html(s.id)}" value="${html(s.time)}"></div><div class="field"><label>Дедлайн</label><input class="control" type="time" data-slot-field="deadline" data-slotid="${html(s.id)}" value="${html(s.deadline)}"></div><div class="field span2"><label>Количество (${html(w.unit)})</label><input class="control" type="number" min="0.01" step="any" data-slot-field="qty" data-slotid="${html(s.id)}" value="${html(s.qty)}"></div></div></div>`).join('')}<button class="btn secondary full" data-action="wAddSlot">+ Добавить приём</button>`
+        if (w.step === 3)
+          body = `${field(`Начальный остаток (${w.unit})`, 'stock', w.stock, 'number', 'min="0" step="any"')}${field('Предупреждать за N дней до конца запаса', 'threshold', w.threshold, 'number', 'min="0" step="1"')}<p class="helper">Запас списывается только после подтверждения фактического приёма. В рабочей версии порог рассчитывается с учётом курсов и дней недели.</p>`
+        if (w.step === 4)
+          body = `<div class="stack"><div class="flex-between"><span class="muted">Название</span><strong>${html(w.name)}</strong></div><div class="flex-between"><span class="muted">Единица</span><strong>${html(w.unit)}</strong></div><div class="flex-between"><span class="muted">Повторение</span><strong>${w.mode === 'daily' ? 'Ежедневно' : w.weekdays.map((i) => WEEKDAYS[i]).join(', ')}</strong></div><div class="flex-between"><span class="muted">Курс</span><strong>${w.course === 'permanent' ? 'Без окончания' : html(w.start + ' — ' + w.end)}</strong></div><div class="divider"></div>${w.slots.map((s) => `<div class="flex-between"><div><strong>${html(s.name || 'Приём')} · ${html(s.time)}</strong><div class="small muted">Дедлайн ${html(s.deadline)}</div></div><strong>${slugNum(s.qty)} ${html(w.unit)}</strong></div>`).join('')}<div class="divider"></div><div class="flex-between"><span class="muted">Остаток</span><strong>${slugNum(w.stock)} ${html(w.unit)}</strong></div><div class="flex-between"><span class="muted">Порог</span><strong>${slugNum(w.threshold)} дней</strong></div></div>`
+        return `${iconHeader('Добавить препарат', 'Пошаговый мастер настройки препарата')}<button class="btn ghost smallbtn" data-action="nav" data-view="meds">← К списку лекарств</button><section class="panel" style="max-width:690px;margin-top:16px"><div class="flex-between" style="margin-bottom:12px"><span class="eyebrow">ШАГ ${w.step + 1} ИЗ 5</span><span class="small muted">${labels[w.step]}</span></div><div class="steps">${labels.map((_, i) => `<span class="${i <= w.step ? 'done' : ''}"></span>`).join('')}</div><h2 style="margin:21px 0">${labels[w.step]}</h2>${body}${!wizardValidation(w) ? '<p class="small" style="color:var(--red);margin-top:8px">Заполни обязательные поля правильно.</p>' : ''}<div class="wizard-footer"><button class="btn secondary" data-action="wBack" ${w.step === 0 ? 'disabled' : ''}>← Назад</button>${w.step === 4 ? '<button class="btn" data-action="wSave">Сохранить препарат ✓</button>' : `<button class="btn" data-action="wNext" ${!wizardValidation(w) ? 'disabled' : ''}>Далее →</button>`}</div></section>`
+      }
+      function monthStart(s) {
+        return s.slice(0, 7) + '-01'
+      }
+      function shiftMonth(s, n) {
+        const d = parseLocal(monthStart(s))
+        d.setMonth(d.getMonth() + n)
+        return dateISO(d)
+      }
+      function renderHistory() {
+        const date = ui.historyDate || currentDay(),
+          start = monthStart(date),
+          monthDate = parseLocal(start),
+          daysCount = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate(),
+          offset = dow(start)
+        const blanks = Array.from({ length: offset }, () => '<span></span>').join('')
+        let dayHtml = ''
+        for (let day = 1; day <= daysCount; day++) {
+          const dt = `${start.slice(0, 8)}${pad(day)}`,
+            all = listed(dt),
+            effective = all.filter((x) => x.status !== 'canceled')
+          let dot = ''
+          if (effective.length) {
+            const overdue = effective.some((x) => doseStatus(x) === 'overdue')
+            const allDone = effective.every((x) => x.status === 'taken' || x.status === 'skipped')
+            dot = `<span class="dot ${overdue ? 'warn' : allDone ? '' : 'blank'}"></span>`
+          }
+          dayHtml += `<button class="cal-day ${dt === date ? 'selected' : ''}" data-action="histDay" data-date="${dt}">${day}${dot}</button>`
+        }
+        const list = listed(date, !!ui.historyShowCanceled),
+          planned = list.filter((x) => x.status !== 'canceled')
+        const taken = planned.filter((x) => x.status === 'taken').length,
+          missed = planned.filter((x) => x.status === 'skipped').length,
+          over = planned.filter((x) => doseStatus(x) === 'overdue').length
+        return `${iconHeader('История', 'Логические дни: с 04:00 до 03:59 следующего дня')}<div class="data-grid"><section class="panel"><div class="panel-head"><button class="btn secondary iconbtn" data-action="shiftMonth" data-n="-1" aria-label="Предыдущий месяц">‹</button><h2>${niceDate(start, { month: 'long', year: 'numeric' })}</h2><button class="btn secondary iconbtn" data-action="shiftMonth" data-n="1" aria-label="Следующий месяц">›</button></div><div class="calendar">${WEEKDAYS.map((x) => `<div class="cal-weekday">${x}</div>`).join('')}${blanks}${dayHtml}</div><div class="cal-legend"><span><i class="dot"></i> Разобрано</span><span><i class="dot warn"></i> Не подтверждено</span><span><i class="dot blank"></i> Есть план</span></div><p class="helper">Индикаторы пересчитываются из конкретных приёмов. День без назначений остаётся пустым.</p></section><section class="panel"><div class="panel-head"><h2>${niceDate(date)}</h2><span class="chip neutral">Логический день</span></div><p class="small muted">04:00 ${niceDate(date, { day: 'numeric', month: 'short' })} — 03:59 ${niceDate(addDays(date, 1), { day: 'numeric', month: 'short' })}</p><div class="metrics" style="grid-template-columns:repeat(3,1fr);margin:19px 0"><div class="metric green"><strong>${taken}</strong><span>Принято</span></div><div class="metric red"><strong>${over}</strong><span>Не подтвержд.</span></div><div class="metric amber"><strong>${missed}</strong><span>Пропущено</span></div></div><div class="flex-between"><span class="small muted">Запланировано: ${planned.length}</span><button class="btn ghost smallbtn" data-action="toggleCanceled">${ui.historyShowCanceled ? 'Скрыть' : 'Показать'} отменённые</button></div><div class="divider"></div><div class="stack">${list.length ? list.map((x) => doseCard(x, true)).join('') : '<div class="empty">Нет приёмов за этот день.</div>'}</div></section></div>`
+      }
+      function summarize(days, medId) {
+        const r = {
+          planned: 0,
+          taken: 0,
+          onTime: 0,
+          late: 0,
+          unknown: 0,
+          skipped: 0,
+          unconfirmed: 0,
+        }
+        const arr = []
+        for (const dt of days) {
+          const ds = listed(dt).filter(
+            (d) => (medId === 'all' || d.medicineId === medId) && d.status !== 'canceled'
+          )
+          const row = { day: dt, planned: ds.length, taken: 0 }
+          for (const d of ds) {
+            r.planned++
+            if (d.status === 'taken') {
+              r.taken++
+              row.taken++
+              if (d.timeUnknown || !d.takenAt) r.unknown++
+              else if (parseLocal(d.takenAt) > parseLocal(d.deadlineAt)) r.late++
+              else r.onTime++
+            } else if (d.status === 'skipped') r.skipped++
+            else r.unconfirmed++
+          }
+          arr.push(row)
+        }
+        return { ...r, days: arr }
+      }
+      function renderReports() {
+        const current = currentDay(),
+          days = Array.from({ length: ui.reportPeriod }, (_, i) =>
+            addDays(current, -ui.reportPeriod + i)
+          ),
+          r = summarize(days, ui.reportMed),
+          pct = r.planned ? Math.round((r.taken / r.planned) * 100) : 0,
+          known = r.onTime + r.late,
+          pctTime = known ? Math.round((r.onTime / known) * 100) : null
+        const select = `<select class="control" id="report-med" style="max-width:230px"><option value="all">Все препараты</option>${state.medicines.map((m) => `<option value="${m.id}" ${ui.reportMed === m.id ? 'selected' : ''}>${medTitle(m)}</option>`).join('')}</select>`
+        const reportRow = (label, n, mark = '') =>
+          `<div class="report-row"><span>${mark} ${label}</span><strong>${n}</strong></div>`
+        return `${iconHeader('Отчёты', 'Статистика по завершённым логическим дням')}<section class="panel"><div class="flex-between" style="flex-wrap:wrap;gap:13px"><div class="choice-row"><button class="choice ${ui.reportPeriod === 7 ? 'selected' : ''}" data-action="reportPeriod" data-n="7">7 дней</button><button class="choice ${ui.reportPeriod === 30 ? 'selected' : ''}" data-action="reportPeriod" data-n="30">30 дней</button></div>${select}</div><p class="helper">В расчёт входят ${niceDate(days[0], { day: 'numeric', month: 'short' })} — ${niceDate(days.at(-1), { day: 'numeric', month: 'short' })}. Сегодняшний незавершённый день исключён.</p></section>
+ <div class="data-grid" style="margin-top:15px"><section class="panel"><h2>Подтверждённые приёмы</h2><div class="report-big" style="margin:20px 0"><div class="ring" style="background:conic-gradient(var(--green) ${pct}%, var(--soft) 0)"><div class="ring-inner">${pct}%</div></div><div><div style="font-size:25px;font-weight:850">${r.taken} из ${r.planned}</div><div class="small muted">Принято среди всех назначенных</div></div></div><div class="notice"><strong>Своевременность: ${pctTime === null ? 'нет данных' : pctTime + '%'}</strong>Рассчитана по ${known} приёмам с известным фактическим временем. Время неизвестно у ${r.unknown} подтверждённых.</div></section>
+ <section class="panel"><h2>Состояние приёмов</h2><div class="report-rows" style="margin-top:17px">${reportRow('По плану', r.planned)}${reportRow('В пределах дедлайна', r.onTime, '✓')}${reportRow('После дедлайна', r.late, '◷')}${reportRow('Принято, время неизвестно', r.unknown, '?')}${reportRow('Явно пропущено', r.skipped, '–')}${reportRow('Не подтверждено', r.unconfirmed, '!')}</div></section></div>
+ <section class="panel"><div class="panel-head"><h2>Приёмы по логическим дням</h2><button class="btn secondary smallbtn" data-action="exportCSV">↓ Скачать CSV</button></div><div class="spark">${r.days.map((row) => `<div class="spark-col" title="${html(niceDate(row.day))}: ${row.taken} из ${row.planned}"><div class="spark-bar" style="height:${row.planned ? Math.max(3, (row.taken / Math.max(1, row.planned)) * 95) : 2}%"></div>${ui.reportPeriod === 7 ? `<small>${WEEKDAYS[dow(row.day)]}</small>` : ''}</div>`).join('')}</div><p class="helper">Высота столбца — доля подтверждённых приёмов. По нажатию на день в календаре доступна детализация.</p><div style="margin-top:12px"><button class="btn secondary smallbtn" data-action="nav" data-view="history">Открыть календарь →</button></div></section>
+ <div class="notice warn" style="margin-top:15px"><strong>Важная оговорка</strong>Эти числа иллюстрируют интерфейс. Подтверждение — запись пользователя, а не независимая проверка приёма. PDF-экспорт пока не реализован в макете.</div>`
+      }
+      function renderSettings() {
+        const notifications = state.notifications.slice(0, 12)
+        return `${iconHeader('Настройки', 'Демо-режим, уведомления и управление локальными данными')}<div class="data-grid"><section class="panel"><h2>Правила уведомлений</h2><div class="report-rows" style="margin:13px 0">${[
+          ['Первое уведомление', 'После дедлайна'],
+          ['Интервал повторов', state.settings.repeatEvery + ' минут'],
+          ['Повторные сообщения', state.settings.repeats + ' (плюс первое)'],
+          ['Начало логического дня', '04:00'],
+          ['Часовой пояс браузера', state.settings.timezone],
+        ]
+          .map(
+            (x) =>
+              `<div class="report-row"><span>${html(x[0])}</span><strong style="text-align:right">${html(x[1])}</strong></div>`
+          )
+          .join(
+            ''
+          )}</div><p class="helper">Часовой пояс показан для ориентира. Этот офлайн-макет использует локальный часовой пояс браузера и не моделирует все пограничные случаи перехода на летнее время.</p></section>
+ <section class="panel"><h2>Демонстрационное время</h2><p class="small muted" style="margin:8px 0 14px">Можно перейти через дедлайн, полночь и 04:00, чтобы посмотреть изменение интерфейса.</p><div class="field"><label>Время симуляции</label><input id="clock-settings" class="control" type="datetime-local" value="${html(state.demoNow)}"></div><div class="choice-row"><button class="btn secondary smallbtn" data-action="clockMinus">−15 минут</button><button class="btn secondary smallbtn" data-action="clockPlus">+15 минут</button><button class="btn smallbtn" data-action="scan">Смоделировать уведомления</button></div></section></div>
+ <section class="panel"><div class="panel-head"><h2>Тестовый журнал уведомлений</h2><span class="chip neutral">${state.notifications.length} событий</span></div>${
+   notifications.length
+     ? `<div class="stack">${notifications
+         .map((n) => {
+           const d = doseBy(n.doseId)
+           return `<div class="flex-between" style="border-bottom:1px solid var(--line);padding:8px 0;gap:12px"><div><strong class="small">🔔 ${medTitle(medBy(d?.medicineId))}</strong><div class="tiny muted">${html(n.at.replace('T', ' · '))} · ${n.step === 0 ? 'Первое уведомление' : 'Повтор ' + n.step}</div></div><button class="btn secondary smallbtn" data-action="doseModal" data-id="${html(n.doseId)}">Приём</button></div>`
+         })
+         .join('')}</div>`
+     : '<div class="empty">Пока уведомлений нет. Установи демонстрационное время после дедлайна и нажми «Смоделировать уведомления».</div>'
+ }</section>
+ <section class="panel"><h2>Данные и диагностика</h2><p class="small muted" style="margin:9px 0 15px">Функции ниже работают только с данным браузером. Данные сохраняются в localStorage, а не в настоящей медицинской базе.</p><div class="choice-row"><button class="btn secondary" data-action="exportJSON">↓ Выгрузить JSON</button><button class="btn danger" data-action="resetModal">↻ Сбросить демо</button></div><div class="divider"></div><h3>Последние события</h3><div style="margin-top:13px">${renderEvents(state.audit.slice(0, 12))}</div></section>`
+      }
+      function renderModal() {
+        if (!ui.modal) return ''
+        const mo = ui.modal
+        let title = '',
+          subtitle = '',
+          body = ''
+        if (mo.type === 'dose') {
+          const d = doseBy(mo.id),
+            m = medBy(d?.medicineId)
+          if (!d) return ''
+          title = 'Карточка приёма'
+          subtitle = `${m.name} · ${niceDate(d.logicalDate)} (логический день)`
+          const cancelled = d.status === 'canceled',
+            readOnlyFuture = d.logicalDate > currentDay()
+          body = `<div class="notice"><strong>Плановый приём</strong>${html(d.scheduledAt.replace('T', ' · '))} · дедлайн ${html(d.deadlineAt.replace('T', ' · '))}<br>Плановая доза: ${slugNum(d.plannedQty)} ${html(m.unit)}</div>
+  ${cancelled || readOnlyFuture ? `<p class="small muted" style="margin:16px 0">${cancelled ? 'Этот приём отменён по расписанию. Причина: ' + html(d.cancelReason || '—') : 'Будущие дни в истории доступны только для просмотра. Досрочную фиксацию сегодняшнего приёма выполняй на экране «Сегодня».'}</p>` : `<form id="dose-form" data-form="dose" data-id="${html(d.id)}" style="margin-top:17px"><div class="field"><label>Текущий факт</label><select class="control" name="status" id="edit-dose-status"><option value="taken" ${d.status === 'taken' ? 'selected' : ''}>Принято</option><option value="skipped" ${d.status === 'skipped' ? 'selected' : ''}>Пропущено</option><option value="pending" ${d.status === 'pending' ? 'selected' : ''}>Не подтверждено</option></select></div><div id="dose-taken-fields" style="display:${d.status === 'taken' ? 'block' : 'none'}"><div class="field"><label>Фактические дата и время</label><input type="datetime-local" class="control" name="takenAt" value="${html(d.takenAt || '')}"><p class="helper">Для исторического приёма время не подставляется автоматически: укажи фактическое или выбери «неизвестно».</p></div><div class="field"><label><input type="checkbox" name="unknown" ${d.timeUnknown ? 'checked' : ''}> Точное время неизвестно</label></div><div class="field"><label>Фактическое количество (${html(m.unit)})</label><input class="control" name="qty" type="number" min="0.01" step="any" value="${d.actualQty || d.plannedQty}"></div></div><button class="btn full" type="submit">Сохранить исправление</button></form>`}
+  <div class="divider"></div><div class="flex-between"><h3>Журнал изменений</h3><span class="chip neutral">${auditRowsFor(d.id).length}</span></div><div style="margin-top:12px">${renderEvents(auditRowsFor(d.id).slice(0, 12))}</div>`
+        }
+        if (mo.type === 'stock') {
+          const m = medBy(mo.id)
+          title = mo.kind === 'recount' ? 'Корректировка остатков' : 'Пополнить запас'
+          subtitle = m.name
+          body = `<form data-form="stock" data-id="${m.id}" data-kind="${mo.kind}"><div class="notice">Учётный остаток: <strong>${slugNum(m.stock)} ${html(m.unit)}</strong></div><div class="field" style="margin-top:16px"><label>${mo.kind === 'recount' ? 'Фактическое количество сейчас' : 'Добавить количество'} (${html(m.unit)})</label><input class="control" name="amount" type="number" min="${mo.kind === 'recount' ? 0 : 0.01}" step="any" value="${mo.kind === 'recount' ? m.stock : 30}" required></div><div class="field"><label>Комментарий (необязательно)</label><input class="control" name="note" placeholder="Например, новая упаковка"></div><button class="btn full" type="submit">${mo.kind === 'recount' ? 'Сохранить корректировку' : 'Пополнить'}</button></form>`
+        }
+        if (mo.type === 'pause') {
+          const m = medBy(mo.id)
+          title = 'Приостановить приём'
+          subtitle = m.name
+          body = `<form data-form="pause" data-id="${m.id}"><div class="notice warn"><strong>При паузе отменяются будущие приёмы</strong>Уже наступившие (включая просроченные) не удаляются и остаются в истории.</div><div class="field" style="margin-top:16px"><label>Тип паузы</label><select class="control" id="pause-kind" name="kind"><option value="manual">Сейчас · до ручного возобновления</option><option value="dated">На даты · с автоматическим возобновлением</option></select></div><div id="pause-dates" style="display:none"><div class="form-grid"><div class="field"><label>Начало</label><input class="control" type="date" name="start" value="${currentDay()}"></div><div class="field"><label>Последний день</label><input class="control" type="date" name="end" value="${addDays(currentDay(), 2)}"></div></div><p class="helper">Даты включительно. Если начало — сегодня, отмена действует сразу.</p></div><button class="btn full" type="submit">Подтвердить паузу</button></form>`
+        }
+        if (mo.type === 'end') {
+          const m = medBy(mo.id)
+          title = 'Завершить курс?'
+          subtitle = m.name
+          body = `<div class="notice warn"><strong>Завершение курса</strong>Все будущие ещё не наступившие приёмы отменятся. История и остатки сохранятся. Для нового курса создаётся новое расписание.</div><div class="choice-row" style="margin-top:20px"><button class="btn danger" data-action="confirmEnd" data-id="${m.id}">Завершить курс</button><button class="btn secondary" data-action="closeModal">Отмена</button></div>`
+        }
+        if (mo.type === 'slot') {
+          const m = medBy(mo.id),
+            s = m.slots.find((x) => x.id === mo.slot) || {
+              id: 'new',
+              name: 'Новый приём',
+              time: '12:00',
+              deadline: '13:00',
+              qty: 1,
+            }
+          title = mo.slot === 'new' ? 'Добавить время' : 'Редактирование времени'
+          subtitle = m.name
+          body = `<form data-form="slot" data-id="${m.id}" data-slot="${html(s.id)}"><div class="field"><label>Название приёма</label><input class="control" name="name" value="${html(s.name)}"></div><div class="form-grid"><div class="field"><label>Время</label><input class="control" name="time" type="time" value="${html(s.time)}" required></div><div class="field"><label>Дедлайн</label><input class="control" name="deadline" type="time" value="${html(s.deadline)}" required></div></div><div class="field" style="margin-top:12px"><label>Количество (${html(m.unit)})</label><input class="control" name="qty" type="number" step="any" min="0.01" value="${html(s.qty)}" required></div><div class="notice warn" style="margin:14px 0"><strong>Демонстрационное ограничение</strong>Мастер сохраняет исходные значения. Здесь будущие ещё не начавшиеся записи пересоздаются, а полноценное версионирование расписания появится на сервере.</div><button class="btn full" type="submit">Сохранить расписание</button></form>`
+        }
+        if (mo.type === 'reset') {
+          title = 'Сбросить демонстрацию?'
+          subtitle = 'Вернуть исходные тестовые данные'
+          body =
+            '<p class="small muted">Локальные изменения, препараты и история вернутся к исходному состоянию. На реальные данные Telegram это не влияет.</p><div class="choice-row" style="margin-top:20px"><button class="btn danger" data-action="confirmReset">Сбросить</button><button class="btn secondary" data-action="closeModal">Отмена</button></div>'
+        }
+        return `<div class="modal-bg" id="backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${html(title)}"><div class="modal-head"><div><div class="eyebrow">МОИ ЛЕКАРСТВА</div><h2>${html(title)}</h2><p class="subtitle">${html(subtitle)}</p></div><button class="btn secondary iconbtn" type="button" data-action="closeModal" aria-label="Закрыть">✕</button></div>${body}</div></div>`
+      }
+      function render() {
+        renderNav()
+        const views = {
+          today: renderToday,
+          meds: renderMeds,
+          'med-detail': renderMedDetail,
+          wizard: renderWizard,
+          history: renderHistory,
+          reports: renderReports,
+          settings: renderSettings,
+        }
+        $('#main').innerHTML = (views[ui.view] || renderToday)()
+        $('#overlays').innerHTML = renderModal()
+      }
+      function toast(msg) {
+        const old = $('.toast')
+        if (old) old.remove()
+        const el = document.createElement('div')
+        el.className = 'toast'
+        el.textContent = msg
+        document.body.appendChild(el)
+        setTimeout(() => el.remove(), 3300)
+      }
+      function navigate(v) {
+        ui.view = v
+        ui.modal = null
+        if (v === 'history' && !ui.historyDate) ui.historyDate = currentDay()
+        render()
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      }
+      function fileDownload(filename, content, mime) {
+        const blob = new Blob([content], { type: mime })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.append(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 500)
+      }
+      function exportCSV() {
+        const n = ui.reportPeriod,
+          dates = Array.from({ length: n }, (_, i) => addDays(currentDay(), -n + i)),
+          rows = [
+            [
+              'Логический день',
+              'Препарат',
+              'Запланировано',
+              'Дедлайн',
+              'Плановая доза',
+              'Статус',
+              'Фактически принято',
+              'Реальное время',
+              'Время записи',
+            ],
+          ]
+        for (const date of dates)
+          for (const d of listed(date)) {
+            if (
+              d.status === 'canceled' ||
+              (ui.reportMed !== 'all' && ui.reportMed !== d.medicineId)
+            )
+              continue
+            const m = medBy(d.medicineId)
+            rows.push([
+              date,
+              m?.name,
+              d.scheduledAt,
+              d.deadlineAt,
+              `${d.plannedQty} ${m?.unit || ''}`,
+              doseStatus(d),
+              d.status === 'taken' ? d.actualQty : '',
+              d.timeUnknown ? 'Неизвестно' : d.takenAt || '',
+              d.recordedAt || '',
+            ])
+          }
+        const csv =
+          '\uFEFF' +
+          rows
+            .map((r) => r.map((v) => '"' + String(v ?? '').replaceAll('"', '""') + '"').join(';'))
+            .join('\r\n')
+        fileDownload(`medtracker_report_${n}d.csv`, csv, 'text/csv;charset=utf-8')
+        toast('CSV-отчёт сохранён из демоданных')
+      }
+      async function handleAction(el) {
+        const action = el.dataset.action,
+          id = el.dataset.id
+        try {
+          switch (action) {
+            case 'nav':
+              navigate(el.dataset.view)
+              break
+            case 'newMed':
+              ui.wizard = defaultWizard()
+              navigate('wizard')
+              break
+            case 'openMed':
+              ui.selectedMed = id
+              navigate('med-detail')
+              break
+            case 'take': {
+              const ok = await mockApi.confirmDose(id)
+              render()
+              toast(
+                ok ? 'Приём подтверждён. Доза списана один раз.' : 'Этот приём уже подтверждён.'
+              )
+              break
+            }
+            case 'doseModal':
+              ui.modal = { type: 'dose', id }
+              render()
+              break
+            case 'closeModal':
+              ui.modal = null
+              render()
+              break
+            case 'stockModal':
+              ui.modal = { type: 'stock', id, kind: el.dataset.kind }
+              render()
+              break
+            case 'pauseModal':
+              ui.modal = { type: 'pause', id }
+              render()
+              break
+            case 'endModal':
+              ui.modal = { type: 'end', id }
+              render()
+              break
+            case 'slotModal':
+              ui.modal = { type: 'slot', id, slot: el.dataset.slot }
+              render()
+              break
+            case 'resetModal':
+              ui.modal = { type: 'reset' }
+              render()
+              break
+            case 'confirmEnd':
+              await mockApi.endMed(id)
+              ui.modal = null
+              render()
+              toast('Курс завершён; история сохранена')
+              break
+            case 'confirmReset':
+              await mockApi.reset()
+              render()
+              toast('Исходные демоданные восстановлены')
+              break
+            case 'resume':
+              await mockApi.resumeMed(id)
+              render()
+              toast('Расписание возобновлено')
+              break
+            case 'clockPlus':
+              state.demoNow = addMinutes(state.demoNow, 15)
+              save()
+              render()
+              break
+            case 'clockMinus':
+              state.demoNow = addMinutes(state.demoNow, -15)
+              save()
+              render()
+              break
+            case 'scan': {
+              const n = await mockApi.simulateNotifications()
+              render()
+              toast(
+                n
+                  ? `Смоделировано уведомлений: ${n}. Смотри «Настройки».`
+                  : 'Новых уведомлений для этого момента нет'
+              )
+              break
+            }
+            case 'histDay':
+              ui.historyDate = el.dataset.date
+              render()
+              break
+            case 'shiftMonth':
+              ui.historyDate = shiftMonth(ui.historyDate, Number(el.dataset.n))
+              render()
+              break
+            case 'toggleCanceled':
+              ui.historyShowCanceled = !ui.historyShowCanceled
+              render()
+              break
+            case 'reportPeriod':
+              ui.reportPeriod = Number(el.dataset.n)
+              render()
+              break
+            case 'exportCSV':
+              exportCSV()
+              break
+            case 'exportJSON':
+              fileDownload(
+                'medtracker_demo_data.json',
+                JSON.stringify(state, null, 2),
+                'application/json'
+              )
+              toast('Локальные демоданные экспортированы')
+              break
+            case 'wMode':
+              ui.wizard.mode = el.dataset.value
+              if (ui.wizard.mode === 'daily') ui.wizard.weekdays = [0, 1, 2, 3, 4, 5, 6]
+              render()
+              break
+            case 'wCourse':
+              ui.wizard.course = el.dataset.value
+              render()
+              break
+            case 'wDay': {
+              const i = Number(el.dataset.day),
+                v = ui.wizard.weekdays
+              ui.wizard.weekdays = v.includes(i) ? v.filter((x) => x !== i) : [...v, i].sort()
+              render()
+              break
+            }
+            case 'wAddSlot':
+              ui.wizard.slots.push({
+                id: rid(),
+                name: 'Приём',
+                time: '12:00',
+                deadline: '13:00',
+                qty: 1,
+              })
+              render()
+              break
+            case 'wRemoveSlot':
+              ui.wizard.slots = ui.wizard.slots.filter((s) => s.id !== id)
+              render()
+              break
+            case 'wBack':
+              ui.wizard.step = Math.max(0, ui.wizard.step - 1)
+              render()
+              break
+            case 'wNext':
+              if (!wizardValidation(ui.wizard)) {
+                toast('Проверь заполнение полей')
+                break
+              }
+              ui.wizard.step = Math.min(4, ui.wizard.step + 1)
+              render()
+              break
+            case 'wSave': {
+              const w = ui.wizard
+              if (!w || !w.name.trim() || !w.slots.length) {
+                toast('Нужно заполнить обязательные поля')
+                break
+              }
+              const med = {
+                name: w.name.trim(),
+                unit: w.unit,
+                strength: w.strength,
+                stock: Number(w.stock),
+                threshold: Number(w.threshold),
+                mode: w.mode === 'weekly' ? 'weekly' : w.course === 'limited' ? 'course' : 'daily',
+                weekdays: w.mode === 'weekly' ? w.weekdays : [0, 1, 2, 3, 4, 5, 6],
+                start: w.start,
+                end: w.course === 'limited' ? w.end : null,
+                slots: w.slots.map((s) => ({ ...s, qty: Number(s.qty) })),
+              }
+              const newId = await mockApi.addMed(med)
+              ui.selectedMed = newId
+              ui.wizard = null
+              navigate('med-detail')
+              toast('Препарат добавлен в демоданные')
+              break
+            }
+            default:
+              break
+          }
+        } catch (err) {
+          toast('Не удалось выполнить: ' + (err?.message || String(err)))
+          console.error(err)
+        }
+      }
+      document.addEventListener('click', (ev) => {
+        const btn = ev.target.closest('[data-action]')
+        if (!btn || btn.disabled) return
+        ev.preventDefault()
+        handleAction(btn)
+      })
+      function syncWizardValidity() {
+        const next = document.querySelector('[data-action="wNext"]')
+        if (next && ui.wizard) next.disabled = !wizardValidation(ui.wizard)
+      }
+      document.addEventListener('input', (ev) => {
+        const target = ev.target
+        if (!ui.wizard) return
+        if (target.dataset.wizardField) {
+          const k = target.dataset.wizardField
+          ui.wizard[k] =
+            target.type === 'number'
+              ? target.value === ''
+                ? NaN
+                : Number(target.value)
+              : target.value
+          syncWizardValidity()
+        }
+        if (target.dataset.slotField) {
+          const s = ui.wizard.slots.find((x) => x.id === target.dataset.slotid)
+          if (s) {
+            s[target.dataset.slotField] =
+              target.type === 'number'
+                ? target.value === ''
+                  ? NaN
+                  : Number(target.value)
+                : target.value
+            syncWizardValidity()
+          }
+        }
+      })
+      document.addEventListener('change', (ev) => {
+        const target = ev.target
+        if (target.id === 'clock' || target.id === 'clock-settings') {
+          if (target.value && Number.isFinite(parseLocal(target.value).getTime())) {
+            state.demoNow = target.value
+            save()
+            render()
+          }
+          return
+        }
+        if (target.id === 'report-med') {
+          ui.reportMed = target.value
+          render()
+          return
+        }
+        if (target.id === 'edit-dose-status') {
+          const section = $('#dose-taken-fields')
+          if (section) section.style.display = target.value === 'taken' ? 'block' : 'none'
+          return
+        }
+        if (target.id === 'pause-kind') {
+          const section = $('#pause-dates')
+          if (section) section.style.display = target.value === 'dated' ? 'block' : 'none'
+          return
+        }
+        if (target.dataset.wizardField && ui.wizard) {
+          const key = target.dataset.wizardField
+          ui.wizard[key] = target.type === 'number' ? Number(target.value) : target.value
+          return
+        }
+        if (target.dataset.slotField && ui.wizard) {
+          const s = ui.wizard.slots.find((x) => x.id === target.dataset.slotid)
+          if (s)
+            s[target.dataset.slotField] =
+              target.type === 'number' ? Number(target.value) : target.value
+          return
+        }
+      })
+      document.addEventListener('submit', async (ev) => {
+        const form = ev.target
+        if (!form.dataset.form) return
+        ev.preventDefault()
+        const payload = new FormData(form),
+          id = form.dataset.id
+        try {
+          if (form.dataset.form === 'dose') {
+            const patch = {
+              status: payload.get('status'),
+              unknown: payload.has('unknown'),
+              takenAt: payload.get('takenAt'),
+              qty: Number(payload.get('qty')),
+            }
+            await mockApi.correctDose(id, patch)
+            toast('Исправление сохранено, запас пересчитан')
+          }
+          if (form.dataset.form === 'stock') {
+            await mockApi.stock(
+              id,
+              form.dataset.kind,
+              Number(payload.get('amount')),
+              payload.get('note')
+            )
+            toast('Остаток обновлён, операция добавлена в журнал')
+          }
+          if (form.dataset.form === 'pause') {
+            const kind = payload.get('kind')
+            let from = state.demoNow,
+              to = null
+            if (kind === 'dated') {
+              const start = payload.get('start'),
+                end = payload.get('end')
+              if (!start || !end || end < start) throw Error('Неверный диапазон дат')
+              from = start <= currentDay() ? state.demoNow : start + 'T04:00'
+              to = addDays(end, 1) + 'T04:00'
+              if (parseLocal(from) >= parseLocal(to)) throw Error('Диапазон паузы уже закончился')
+            }
+            const n = await mockApi.pauseMed(id, { id: rid(), kind, from, to })
+            toast(`Пауза сохранена. Отменено будущих приёмов: ${n}`)
+          }
+          if (form.dataset.form === 'slot') {
+            const slot = {
+              id: form.dataset.slot === 'new' ? rid() : form.dataset.slot,
+              name: String(payload.get('name') || 'Приём').trim() || 'Приём',
+              time: payload.get('time'),
+              deadline: payload.get('deadline'),
+              qty: Number(payload.get('qty')),
+            }
+            if (!validHH(slot.time) || !validHH(slot.deadline) || slot.qty <= 0)
+              throw Error('Проверь время и количество')
+            await mockApi.editSlot(id, slot)
+            toast('Расписание обновлено для будущих приёмов')
+          }
+          ui.modal = null
+          render()
+        } catch (err) {
+          toast('Ошибка: ' + (err?.message || String(err)))
+          console.error(err)
+        }
+      })
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && ui.modal) {
+          ui.modal = null
+          render()
+        }
+      })
+      document.addEventListener('click', (ev) => {
+        if (ev.target.id === 'backdrop') {
+          ui.modal = null
+          render()
+        }
+      })
+      init()
+    </script>
+  </body>
+</html>
