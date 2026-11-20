@@ -3,6 +3,7 @@ import {
   createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, updateProfile,
 } from 'firebase/auth'
 import type { Auth } from 'firebase/auth'
+import { Icon } from '../components/Icon'
 import { Failure, Field } from '../components/common'
 import { useAction } from '../components/useAction'
 
@@ -12,7 +13,7 @@ export function AuthPage({ auth }: { auth: Auth }) {
   const [success, setSuccess] = useState(false)
   const action = useAction()
   return <div className="auth-shell">
-    <div className="brand"><div className="brand-icon" aria-hidden="true">✚</div><strong>Мои лекарства</strong></div>
+    <div className="brand"><div className="brand-icon"><Icon name="brand" /></div><strong>Мои лекарства</strong></div>
     <form className="panel auth-form" key={mode} onSubmit={event => {
       event.preventDefault()
       const form = new FormData(event.currentTarget)

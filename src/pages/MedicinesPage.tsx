@@ -6,6 +6,7 @@ import { buildDoses } from '../domain/planning'
 import { addDays, dateLabel, LAST_INSTANT, timestampLabel } from '../domain/time'
 import { useRange, useRows } from '../hooks/data'
 import type { MedicineInput, Tracker } from '../services/tracker'
+import { Icon } from '../components/Icon'
 import { Audit } from '../components/Audit'
 import { Dialog, Empty, Failure, Field, Header } from '../components/common'
 import { useAction } from '../components/useAction'
@@ -45,12 +46,12 @@ export function MedicinesPage({ tracker, path, courses, today, settings, now, ed
     return <MedicineDetails key={id} item={item} tracker={tracker} today={today} settings={settings} now={now} editable={fresh} courses={courses} />
   }
   return <>
-    <Header title="Лекарства" subtitle="Курсы лечения, расписания и запасы"><a className="btn" href="#/meds/new">＋ Добавить</a></Header>
+    <Header title="Лекарства" subtitle="Курсы лечения, расписания и запасы"><a className="btn" href="#/meds/new"><Icon name="plus" /> Добавить</a></Header>
     {items.length ? <div className="list">{items.map(item => {
       const { medicine, version, course } = item
       const status = medicine.archived ? 'В архиве' : finished(item, today) ? 'Завершён' : (course.manualPauseId || activePauses.has(course.id)) ? 'Пауза' : version.start > today ? 'Запланирован' : 'Активен'
       return <a className="panel med-list-card" href={`#/meds/${medicine.id}`} key={medicine.id}>
-        <div className="med-icon" aria-hidden="true">◈</div>
+        <div className="med-icon"><Icon name="meds" /></div>
         <div><h2>{medicine.name}</h2><p className="muted">{medicine.unit}{medicine.strength && ` · ${medicine.strength}`} · {scheduleLabel(version)}</p>
           <p>Остаток <strong>{quantityLabel(medicine.stock)} {medicine.unit}</strong></p></div>
         <span className={`chip ${status === 'Активен' ? '' : 'neutral'}`}>{status}</span>
@@ -166,7 +167,7 @@ function MedicineOperation({ mode, close, item, today, tracker, editable }: {
       {(mode === 'archive' || mode === 'end') && <p>Будущие приёмы отменятся. Предыдущие отметки и журнал сохранятся.</p>}
       {mode === 'restart' && <p>Будет создан новый бессрочный курс с последним расписанием. Старые записи сохранятся.</p>}
       {action.error && <Failure>{action.error}</Failure>}
-      <button className="btn" type="submit" disabled={action.busy || !editable}>{title}</button>
+      <button className={`btn ${mode === 'end' || mode === 'archive' ? 'destructive' : ''}`} type="submit" disabled={action.busy || !editable}>{title}</button>
     </form>
   </Dialog>
 }
@@ -224,48 +225,50 @@ function MedicineWizard({ tracker, today, previous, editable }: {
           if (window.location.hash === previousRoute) window.location.hash = `/meds/${id}`
         })
       }}>
-        <h2>{steps[step]}</h2>
-        {step === 0 && <>
-          <Field label="Название"><input className="control" autoComplete="off" required maxLength={120} value={input.name} onChange={event => setInput({ ...input, name: event.target.value })} /></Field>
-          <Field label="Единица учёта (например, табл., капс., мл)"><input className="control" required maxLength={20} value={input.unit} onChange={event => setInput({ ...input, unit: event.target.value })} /></Field>
-          <Field label="Сила одной единицы, если нужна"><input className="control" maxLength={60} value={input.strength} onChange={event => setInput({ ...input, strength: event.target.value })} /></Field>
-        </>}
-        {step === 1 && <>
-          <label className="check-row"><input type="checkbox" checked={weekdays.length === 7} onChange={event => setWeekdays(event.target.checked ? EVERY_DAY : [])} /> Ежедневно</label>
-          <div className="weekday-picker">{WEEKDAYS.map((day, index) => <label className="check-row" key={day}><input type="checkbox" checked={weekdays.includes(index + 1)}
-            onChange={event => setWeekdays(event.target.checked ? [...weekdays, index + 1] : weekdays.filter(value => value !== index + 1))} /> {day}</label>)}</div>
-          <div className="data-grid">
-            <Field label="Начало курса"><input className="control" type="date" required min="1901-01-01" max="9998-12-30" value={start} onChange={event => setStart(event.target.value)} /></Field>
-            <Field label="Окончание включительно (пусто для бессрочного)"><input className="control" type="date" min={start} max="9998-12-30" value={end} onChange={event => setEnd(event.target.value)} /></Field>
-          </div>
-        </>}
-        {step === 2 && <>
-          <p className="muted">Дедлайн, равный времени приёма или раньше него, относится к следующей календарной дате.</p>
-          {slots.map((slot, index) => <fieldset className="slot-fields" key={slot.id}>
-            <legend>Приём {index + 1}</legend>
-            <Field label="Метка (необязательно)"><input className="control" maxLength={60} value={slot.label} onChange={event => patchSlot(slot.id, { label: event.target.value })} /></Field>
-            <Field label="Время"><input className="control" type="time" required value={slot.time} onChange={event => patchSlot(slot.id, { time: event.target.value })} /></Field>
-            <Field label="Дедлайн"><input className="control" type="time" required value={slot.deadline} onChange={event => patchSlot(slot.id, { deadline: event.target.value })} /></Field>
-            <Field label="Количество"><input className="control" type="number" min="0.001" step="0.001" required value={slot.amount} onChange={event => patchSlot(slot.id, { amount: event.target.value })} /></Field>
-            {slots.length > 1 && <button className="btn secondary smallbtn" type="button" onClick={() => setSlots(slots.filter(value => value.id !== slot.id))}>Убрать приём {index + 1}</button>}
-          </fieldset>)}
-          <button className="btn secondary" type="button" disabled={slots.length >= MAX_SLOTS} onClick={() => setSlots([...slots, newSlot()])}>＋ Добавить приём</button>
-          {slots.length >= MAX_SLOTS && <p className="small muted">В одном расписании можно сохранить до {MAX_SLOTS} приёмов в день.</p>}
-        </>}
-        {step === 3 && <>
-          {!previous && <Field label="Начальный остаток"><input className="control" type="number" min="0" step="0.001" required value={stock} onChange={event => setStock(event.target.value)} /></Field>}
-          <Field label="Предупреждать об исчерпании за столько дней"><input className="control" type="number" required min="0" max="365" value={input.warningDays}
-            onChange={event => setInput({ ...input, warningDays: Number(event.target.value) })} /></Field>
-        </>}
-        {step === 4 && <div className="summary-card">
-          <h3>{input.name} · {input.unit}{input.strength && ` · ${input.strength}`}</h3>
-          <p>{weekdays.length === 7 ? 'Ежедневно' : weekdays.map(day => WEEKDAYS[day - 1]).join(', ')} · {dateLabel(start)} — {end ? dateLabel(end) : 'бессрочно'}</p>
-          <ul>{slots.map(slot => <li key={slot.id}>{slot.time} → {slot.deadline} · {slot.amount} {input.unit} {slot.label}</li>)}</ul>
-          {!previous && <p>Начальный остаток {stock} {input.unit}</p>}
-        </div>}
+        <div className="step-content" key={step}>
+          <h2>{steps[step]}</h2>
+          {step === 0 && <>
+            <Field label="Название"><input className="control" autoComplete="off" required maxLength={120} value={input.name} onChange={event => setInput({ ...input, name: event.target.value })} /></Field>
+            <Field label="Единица учёта (например, табл., капс., мл)"><input className="control" required maxLength={20} value={input.unit} onChange={event => setInput({ ...input, unit: event.target.value })} /></Field>
+            <Field label="Сила одной единицы, если нужна"><input className="control" maxLength={60} value={input.strength} onChange={event => setInput({ ...input, strength: event.target.value })} /></Field>
+          </>}
+          {step === 1 && <>
+            <label className="check-row"><input type="checkbox" checked={weekdays.length === 7} onChange={event => setWeekdays(event.target.checked ? EVERY_DAY : [])} /> Ежедневно</label>
+            <div className="weekday-picker">{WEEKDAYS.map((day, index) => <label className="check-row" key={day}><input type="checkbox" checked={weekdays.includes(index + 1)}
+              onChange={event => setWeekdays(event.target.checked ? [...weekdays, index + 1] : weekdays.filter(value => value !== index + 1))} /> {day}</label>)}</div>
+            <div className="data-grid">
+              <Field label="Начало курса"><input className="control" type="date" required min="1901-01-01" max="9998-12-30" value={start} onChange={event => setStart(event.target.value)} /></Field>
+              <Field label="Окончание включительно (пусто для бессрочного)"><input className="control" type="date" min={start} max="9998-12-30" value={end} onChange={event => setEnd(event.target.value)} /></Field>
+            </div>
+          </>}
+          {step === 2 && <>
+            <p className="muted">Дедлайн, равный времени приёма или раньше него, относится к следующей календарной дате.</p>
+            {slots.map((slot, index) => <fieldset className="slot-fields" key={slot.id}>
+              <legend>Приём {index + 1}</legend>
+              <Field label="Метка (необязательно)"><input className="control" maxLength={60} value={slot.label} onChange={event => patchSlot(slot.id, { label: event.target.value })} /></Field>
+              <Field label="Время"><input className="control" type="time" required value={slot.time} onChange={event => patchSlot(slot.id, { time: event.target.value })} /></Field>
+              <Field label="Дедлайн"><input className="control" type="time" required value={slot.deadline} onChange={event => patchSlot(slot.id, { deadline: event.target.value })} /></Field>
+              <Field label="Количество"><input className="control" type="number" min="0.001" step="0.001" required value={slot.amount} onChange={event => patchSlot(slot.id, { amount: event.target.value })} /></Field>
+              {slots.length > 1 && <button className="btn destructive-outline smallbtn" type="button" onClick={() => setSlots(slots.filter(value => value.id !== slot.id))}><Icon name="trash" /> Убрать приём {index + 1}</button>}
+            </fieldset>)}
+            <button className="btn secondary" type="button" disabled={slots.length >= MAX_SLOTS} onClick={() => setSlots([...slots, newSlot()])}><Icon name="plus" /> Добавить приём</button>
+            {slots.length >= MAX_SLOTS && <p className="small muted">В одном расписании можно сохранить до {MAX_SLOTS} приёмов в день.</p>}
+          </>}
+          {step === 3 && <>
+            {!previous && <Field label="Начальный остаток"><input className="control" type="number" min="0" step="0.001" required value={stock} onChange={event => setStock(event.target.value)} /></Field>}
+            <Field label="Предупреждать об исчерпании за столько дней"><input className="control" type="number" required min="0" max="365" value={input.warningDays}
+              onChange={event => setInput({ ...input, warningDays: Number(event.target.value) })} /></Field>
+          </>}
+          {step === 4 && <div className="summary-card">
+            <h3>{input.name} · {input.unit}{input.strength && ` · ${input.strength}`}</h3>
+            <p>{weekdays.length === 7 ? 'Ежедневно' : weekdays.map(day => WEEKDAYS[day - 1]).join(', ')} · {dateLabel(start)} — {end ? dateLabel(end) : 'бессрочно'}</p>
+            <ul>{slots.map(slot => <li key={slot.id}>{slot.time} → {slot.deadline} · {slot.amount} {input.unit} {slot.label}</li>)}</ul>
+            {!previous && <p>Начальный остаток {stock} {input.unit}</p>}
+          </div>}
+        </div>
         {(validation || action.error) && <Failure>{validation || action.error}</Failure>}
         <div className="row-actions">
-          {step > 0 && <button type="button" className="btn secondary" disabled={action.busy} onClick={() => { setValidation(''); setStep(step - 1) }}>Назад</button>}
+          {step > 0 && <button type="button" className="btn secondary" disabled={action.busy} onClick={() => { setValidation(''); setStep(step - 1) }}><Icon name="previous" /> Назад</button>}
           <button type="submit" className="btn" disabled={action.busy || (!editable && step === 4)}>{step === 4 ? 'Сохранить лекарство' : 'Далее'}</button>
         </div>
       </form>

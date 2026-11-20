@@ -4,6 +4,7 @@ import type { Settings } from '../domain/models'
 import { download } from '../domain/export'
 import { notify } from '../domain/reminders'
 import type { Tracker } from '../services/tracker'
+import { Icon } from '../components/Icon'
 import { Dialog, Failure, Field, Header } from '../components/common'
 import { useAction } from '../components/useAction'
 
@@ -66,7 +67,7 @@ export function SettingsPage({ settings, user, tracker, editable, logout }: {
           const backup = await tracker.exportAll()
           download('medtracker-backup.json', JSON.stringify(backup, null, 2), 'application/json;charset=utf-8')
         })}>Экспорт JSON</button>
-        <button className="btn secondary" onClick={() => setDeletion(true)}>Удаление данных</button>
+        <button className="btn destructive-outline" onClick={() => setDeletion(true)}><Icon name="trash" /> Удаление данных</button>
         <button className="btn secondary" disabled={signout.busy} onClick={() => void signout.run(logout, false)}>Выйти</button>
       </div>
       {signout.error && <Failure>{signout.error}</Failure>}
@@ -86,7 +87,7 @@ function Deletion({ tracker, editable, close }: { tracker: Tracker; editable: bo
       {sent ? <p role="status">Запрос сохранён. Свяжитесь с владельцем проекта для завершения.</p> : <>
         <label className="check-row"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} /> Подтверждаю запрос на удаление всех данных</label>
         {action.error && <Failure>{action.error}</Failure>}
-        <button className="btn align-start" disabled={!confirmed || action.busy || !editable} onClick={() =>
+        <button className="btn destructive align-start" disabled={!confirmed || action.busy || !editable} onClick={() =>
           void action.run(async () => { await tracker.requestDeletion(); setSent(true) })}>Отправить запрос</button>
       </>}
     </div>

@@ -12,6 +12,7 @@ import { MedicinesPage } from './pages/MedicinesPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TodayPage } from './pages/TodayPage'
+import { Icon } from './components/Icon'
 import { Failure } from './components/common'
 import { useHash } from './hooks/hash'
 import { useAction } from './components/useAction'
@@ -22,7 +23,7 @@ type Firebase = NonNullable<typeof firebase>
 
 export default function App() {
   if (!firebase) return <div className="auth-shell"><div className="panel stack">
-    <div className="brand-icon" aria-hidden="true">✚</div>
+    <div className="brand-icon"><Icon name="brand" /></div>
     <h1>Medtracker</h1>
     <Failure>Подключение к Firebase не настроено. Владелец проекта должен заполнить конфигурацию Web SDK и пересобрать приложение.</Failure>
   </div></div>
@@ -50,7 +51,7 @@ function AccessGate({ firebase, user }: { firebase: Firebase; user: User }) {
 
   if (access?.enabled) return <Profile tracker={tracker} user={user} logout={logout} accessFresh={access.fresh} />
   return <div className="auth-shell"><div className="panel stack">
-    <div className="brand-icon" aria-hidden="true">✚</div>
+    <div className="brand-icon"><Icon name="brand" /></div>
     <h1>{access?.error ? 'Доступ недоступен' : access ? 'Ожидание подтверждения доступа' : 'Проверка доступа…'}</h1>
     {access?.error && <Failure>{access.error}</Failure>}
     {access && !access.error && <p>Передайте владельцу проекта ваш UID. После подтверждения эта страница обновится автоматически.</p>}
@@ -82,9 +83,9 @@ function Profile({ tracker, user, logout, accessFresh }: {
 }
 
 const navigation = [
-  ['today', '⌂', 'Сегодня'], ['meds', '◈', 'Лекарства'], ['history', '▦', 'История'],
-  ['reports', '▥', 'Отчёты'], ['settings', '⚙', 'Настройки'],
-]
+  ['today', 'Сегодня'], ['meds', 'Лекарства'], ['history', 'История'],
+  ['reports', 'Отчёты'], ['settings', 'Настройки'],
+] as const
 
 function Workspace({ tracker, settings, user, logout, profileFresh }: {
   tracker: Tracker; settings: Settings; user: User; logout: () => Promise<void>; profileFresh: boolean
@@ -102,15 +103,15 @@ function Workspace({ tracker, settings, user, logout, profileFresh }: {
   const editable = profileFresh && !!courseRows?.fresh && navigator.onLine
   const notifications = useNotifications(range.doses, now, today, settings, editable && range.fresh)
 
-  const links = (compact: boolean) => navigation.slice(0, compact ? 4 : 5).map(([route, icon, label]) => <a
+  const links = (compact: boolean) => navigation.slice(0, compact ? 4 : 5).map(([route, label]) => <a
     href={`#/${route}`} key={route} aria-current={page === route ? 'page' : undefined}
     className={`${compact ? 'tab' : 'nav'} ${page === route ? 'active on' : ''}`}>
-    {compact ? <b aria-hidden="true">{icon}</b> : <span className="ico" aria-hidden="true">{icon}</span>}<span>{label}</span>
+    <span className="nav-icon"><Icon name={route} /></span><span>{label}</span>
   </a>)
   return <>
     <div className="app">
       <aside className="sidebar">
-        <a className="brand" href="#/today"><div className="brand-icon" aria-hidden="true">✚</div><div><strong>Мои лекарства</strong><span>Medtracker</span></div></a>
+        <a className="brand" href="#/today"><div className="brand-icon"><Icon name="brand" /></div><div><strong>Мои лекарства</strong><span>Medtracker</span></div></a>
         <nav className="navigation" aria-label="Главная навигация">{links(false)}</nav>
         <div className="sidebar-foot"><strong>{user.displayName || 'Пользователь'}</strong>{settings.zone}</div>
       </aside>
@@ -120,16 +121,18 @@ function Workspace({ tracker, settings, user, logout, profileFresh }: {
           {notifications.messages.map(message => <p key={message}>{message}</p>)}
           <button className="btn secondary smallbtn" onClick={notifications.clear}>Закрыть напоминания</button>
         </div>}
-        {courseRows?.error && <Failure>{courseRows.error}</Failure>}
-        {page === 'today' && (range.error ? <Failure>{range.error}</Failure> : <TodayPage key={today} today={today} timing={settings}
-          now={now} doses={current} tracker={tracker} ready={range.ready && !!courseRows} editable={editable && range.fresh} />)}
-        {page === 'meds' && courseRows && <MedicinesPage key={path} tracker={tracker} path={path} courses={courses}
-          today={today} settings={settings} now={now} editable={editable} />}
-        {page === 'history' && courseRows && <HistoryPage tracker={tracker} courses={courses} today={today} now={now} editable={editable} />}
-        {page === 'reports' && courseRows && <ReportsPage tracker={tracker} courses={courses} today={today} now={now} />}
-        {page === 'settings' && <SettingsPage tracker={tracker} settings={settings} user={user} logout={logout} editable={profileFresh && navigator.onLine} />}
-        {!courseRows && !['settings', 'today'].includes(page) && <p role="status">Загрузка данных…</p>}
-        {!navigation.some(([route]) => route === page) && <p className="notice">Раздел не найден. <a href="#/today">Вернуться на главную</a></p>}
+        <div key={page} className="page-view">
+          {courseRows?.error && <Failure>{courseRows.error}</Failure>}
+          {page === 'today' && (range.error ? <Failure>{range.error}</Failure> : <TodayPage key={today} today={today} timing={settings}
+            now={now} doses={current} tracker={tracker} ready={range.ready && !!courseRows} editable={editable && range.fresh} />)}
+          {page === 'meds' && courseRows && <MedicinesPage key={path} tracker={tracker} path={path} courses={courses}
+            today={today} settings={settings} now={now} editable={editable} />}
+          {page === 'history' && courseRows && <HistoryPage tracker={tracker} courses={courses} today={today} now={now} editable={editable} />}
+          {page === 'reports' && courseRows && <ReportsPage tracker={tracker} courses={courses} today={today} now={now} />}
+          {page === 'settings' && <SettingsPage tracker={tracker} settings={settings} user={user} logout={logout} editable={profileFresh && navigator.onLine} />}
+          {!courseRows && !['settings', 'today'].includes(page) && <p role="status">Загрузка данных…</p>}
+          {!navigation.some(([route]) => route === page) && <p className="notice">Раздел не найден. <a href="#/today">Вернуться на главную</a></p>}
+        </div>
       </main>
     </div>
     <nav className="bottom-nav" aria-label="Нижняя навигация">{links(true)}</nav>

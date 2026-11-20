@@ -7,6 +7,7 @@ import { dosesCsv, download } from '../domain/export'
 import { usePlanned } from '../hooks/data'
 import type { Tracker } from '../services/tracker'
 import { DoseList } from '../components/Doses'
+import { Icon } from '../components/Icon'
 import { Failure, Field, Header } from '../components/common'
 
 export function HistoryPage({ tracker, courses, today, now, editable }: {
@@ -19,14 +20,14 @@ export function HistoryPage({ tracker, courses, today, now, editable }: {
   return <>
     <Header title="История" subtitle="Выберите логический день, чтобы просмотреть или исправить отметки." />
     <section className="panel calendar">
-      <div className="panel-head">
-        <button className="btn secondary iconbtn" aria-label="Предыдущий месяц" disabled={month.prev < '1901-01-01'} onClick={() => setSelected(month.prev)}>‹</button>
-        <h2>{month.label}</h2>
-        <button className="btn secondary iconbtn" aria-label="Следующий месяц" disabled={month.next > '9998-12-01'} onClick={() => setSelected(month.next)}>›</button>
+      <div className="panel-head calendar-head">
+        <button className="btn secondary iconbtn" aria-label="Предыдущий месяц" disabled={month.prev < '1901-01-01'} onClick={() => setSelected(month.prev)}><Icon name="previous" /></button>
+        <h2 className="month-view" key={month.first}>{month.label}</h2>
+        <button className="btn secondary iconbtn" aria-label="Следующий месяц" disabled={month.next > '9998-12-01'} onClick={() => setSelected(month.next)}><Icon name="next" /></button>
       </div>
       <Field label="Перейти к дате"><input className="control calendar-input" type="date" min="1901-01-01" max="9998-12-30" value={selected}
         onChange={event => { if (event.currentTarget.validity.valid && event.target.value) setSelected(event.target.value) }} /></Field>
-      <div className="calendar-grid" aria-label="Логические дни месяца">
+      <div className="calendar-grid month-view" key={month.first} aria-label="Логические дни месяца">
         {WEEKDAYS.map(day => <div className="calendar-weekday" key={day}>{day}</div>)}
         {Array.from({ length: month.leading }, (_, index) => <div key={index} />)}
         {daysBetween(month.first, month.last).map(day => {

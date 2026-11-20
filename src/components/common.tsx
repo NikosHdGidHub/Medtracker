@@ -1,15 +1,16 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { Icon } from './Icon'
 
 export function Header({ title, subtitle, children }: { title: string; subtitle?: string; children?: ReactNode }) {
   return <div className="topline">
     <div><h1>{title}</h1>{subtitle && <p className="subtitle">{subtitle}</p>}</div>
-    <div className="top-actions">{children}<a className="btn secondary iconbtn mobile-settings" href="#/settings" aria-label="Настройки">⚙</a></div>
+    <div className="top-actions">{children}<a className="btn secondary iconbtn mobile-settings" href="#/settings" aria-label="Настройки"><Icon name="settings" /></a></div>
   </div>
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <div className="empty">{children}</div>
+  return <div className="empty"><span className="empty-icon"><Icon name="empty" /></span>{children}</div>
 }
 
 export function Failure({ children }: { children: ReactNode }) {
@@ -33,7 +34,7 @@ export function Dialog({ title, children, close, busy = false }: {
     event.preventDefault()
     if (!busy) close()
   }}>
-    <div className="panel-head"><h2>{title}</h2><button type="button" className="btn secondary iconbtn" aria-label="Закрыть" disabled={busy} onClick={close}>×</button></div>
+    <div className="panel-head"><h2>{title}</h2><button type="button" className="btn secondary iconbtn" aria-label="Закрыть" disabled={busy} onClick={close}><Icon name="close" /></button></div>
     {children}
   </dialog>
 }
