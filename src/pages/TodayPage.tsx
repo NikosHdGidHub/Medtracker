@@ -1,15 +1,16 @@
-import { Timestamp } from 'firebase/firestore'
-import { useEffect, useRef } from 'react'
-import type { Dose, Timing } from '../domain/models'
+import { useEffect, useRef, useState } from 'react'
+import type { Dose, Settings } from '../domain/models'
 import { summarize } from '../domain/planning'
-import { dateLabel, localInput, localInstant, addDays } from '../domain/time'
+import { dateLabel } from '../domain/time'
 import type { Tracker } from '../services/tracker'
 import { DoseList } from '../components/Doses'
+import { Icon } from '../components/Icon'
+import { OneOffDose } from '../components/OneOffDose'
 import { Header } from '../components/common'
 
 export function TodayPage({
   today,
-  timing,
+  settings,
   now,
   doses,
   tracker,
@@ -17,13 +18,14 @@ export function TodayPage({
   editable,
 }: {
   today: string
-  timing: Timing
+  settings: Settings
   now: number
   doses: Dose[]
   tracker: Tracker
   ready: boolean
   editable: boolean
 }) {
+  const [adding, setAdding] = useState(false)
   const active = doses.filter((dose) => dose.status !== 'canceled')
   const total = summarize(active, now)
   const chronology = useRef<HTMLDivElement>(null)
@@ -38,10 +40,14 @@ export function TodayPage({
       item.scrollIntoView({ block: 'nearest', behavior: 'instant' })
     }
   }, [ready])
-  const end = localInstant(addDays(today, 1), timing.boundary, timing.zone).toMillis() - 60_000
   return (
     <>
-      <Header title="Сегодня" subtitle={`${dateLabel(today)} `} />
+      <Header title="Сегодня" subtitle={dateLabel(today)}>
+        <button className="btn" onClick={() => setAdding(true)} disabled={!editable}>
+          <Icon name="plus" /> Добавить приём
+        </button>
+      </Header>
+      {adding && <OneOffDose tracker={tracker} settings={settings} editable={editable} close={() => setAdding(false)} />}
       <div className="metrics">
         <div className="metric green">
           <strong>

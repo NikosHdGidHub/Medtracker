@@ -54,6 +54,6 @@ export function HistoryPage({ tracker, courses, today, now, editable }: {
     </div>
     {error ? <Failure>{error}</Failure> : !ready ? <p role="status">Загрузка истории…</p> :
       <DoseList key={selected} doses={rows.get(selected) ?? []} now={now} tracker={tracker} historical
-        editable={editable && fresh && selected <= today} canRead={false} empty="На этот день приёмов нет." />}
+        editable={editable && fresh} canRead={false} empty="На этот день приёмов нет." />}
   </>
 }

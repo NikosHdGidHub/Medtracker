@@ -36,10 +36,10 @@ import type {
   Settings,
   StockEntry,
 } from '../domain/models'
-import { defaultTiming, MAX_QUANTITY } from '../domain/models'
+import { defaultTiming, isOneOff, MAX_QUANTITY, ONE_OFF } from '../domain/models'
 import { changeStock, dosePlan, inside, sameMark } from '../domain/planning'
 import type { DoseChange } from '../domain/planning'
-import { addDays, FIRST_INSTANT, LAST_INSTANT, localInstant, rangeBounds } from '../domain/time'
+import { addDays, FIRST_INSTANT, LAST_INSTANT, localInstant, logicalDay, rangeBounds } from '../domain/time'
 
 const rows = <T>(docs: QueryDocumentSnapshot[]) =>
   docs.map((snapshot) => ({ ...(snapshot.data() as T), id: snapshot.id }))
@@ -449,6 +449,39 @@ export class Tracker {
     })
   }
 
+  async addOneOff(medicineId: string, quantity: number, localTime: string, expectedCalendarId: string) {
+    if (!Number.isInteger(quantity) || quantity <= 0 || quantity > MAX_QUANTITY)
+      throw new Error('Укажите количество больше нуля с точностью до 0,001.')
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(localTime))
+      throw new Error('Укажите дату и время приёма.')
+
+    const slotId = doc(this.group('doses')).id
+    await runTransaction(this.db, async (transaction) => {
+      const medicine = await required<Medicine>(transaction, doc(this.group('medicines'), medicineId))
+      const settings = await required<Settings>(transaction, doc(this.group('settings'), 'main'))
+      if (medicine.archived || settings.calendarId !== expectedCalendarId) throw stale()
+
+      const at = Timestamp.now()
+      const scheduledAt = localInstant(localTime.slice(0, 10), localTime.slice(11), settings.zone)
+      const date = logicalDay(scheduledAt.toMillis(), settings)
+      if (date < logicalDay(at.toMillis(), settings) || date > '9998-12-30')
+        throw new Error('Выберите время сегодня или в будущем.')
+      const id = [ONE_OFF, settings.calendarId, date, slotId].join('_')
+      const record: DoseRecord = {
+        ownerId: this.uid, medicineId, courseId: ONE_OFF, versionId: ONE_OFF,
+        calendarId: settings.calendarId, slotId, logicalDate: date, scheduledAt,
+        deadlineAt: Timestamp.fromMillis(scheduledAt.toMillis() + 60 * 60_000),
+        name: medicine.name, unit: medicine.unit, label: 'Разовый приём', quantity,
+        zone: settings.zone, boundary: settings.boundary,
+        status: 'pending', actualAt: null, actualQuantity: 0, recordedAt: at, revision: 1,
+      }
+      transaction.set(doc(this.group('doses'), id), record)
+      this.audit(transaction, `dose_${id}_1`, {
+        medicineId, entityId: id, action: 'dose_changed', at, before: null, after: { ...record },
+      })
+    })
+  }
+
   async saveDose(dose: Dose, next: DoseChange, quick = false) {
     if (dose.status === 'canceled') throw stale()
     const doseRef = doc(this.group('doses'), dose.id)
@@ -459,8 +492,10 @@ export class Tracker {
         const snap = await transaction.get(doseRef)
         const previous = snap.exists() ? (snap.data() as DoseRecord) : undefined
         if (sameMark(previous, next) || (quick && previous && previous.status !== 'pending')) return
-        if ((previous?.revision ?? 0) !== (dose.record?.revision ?? 0)) throw stale()
+        if (previous?.status === 'canceled' || (previous?.revision ?? 0) !== (dose.record?.revision ?? 0))
+          throw stale()
         if (!previous) {
+          if (isOneOff(dose)) throw stale()
           const course = await required<Course>(
             transaction,
             doc(this.group('courses'), dose.courseId)
@@ -500,7 +535,7 @@ export class Tracker {
             doseId: dose.id,
             delta,
             balance,
-            kind: previous ? 'correction' : 'dose',
+            kind: previous && !(isOneOff(dose) && previous.revision === 1) ? 'correction' : 'dose',
             at,
           })
         }

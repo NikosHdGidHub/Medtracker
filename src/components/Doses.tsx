@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Timestamp } from 'firebase/firestore'
 import type { Dose, DoseStatus } from '../domain/models'
-import { quantityLabel, toUnits } from '../domain/models'
+import { isOneOff, quantityLabel, toUnits } from '../domain/models'
 import { displayStatus } from '../domain/planning'
 import { dateLabel, localInput, localInstant, timestampLabel } from '../domain/time'
 import type { Tracker } from '../services/tracker'
+import { Icon } from './Icon'
 import { Audit } from './Audit'
 import { Dialog, Empty, Failure, Field } from './common'
 import { useAction } from './useAction'
@@ -49,22 +50,24 @@ export function DoseList({ doses, now, tracker, historical = false, editable, ca
           {!historical && dose.status === 'pending' && <button className="btn smallbtn" disabled={action.busy || !editable}
             onClick={() => void action.run(() => tracker.saveDose(dose, { status: 'taken', actualAt: Timestamp.now(), actualQuantity: dose.quantity }, true))}>✓ Принял</button>}
           <button className="btn secondary smallbtn" onClick={() => setSelection(dose.id)} aria-label={`Карточка приёма «${dose.name}»`}>
-            {dose.status === 'taken' || dose.status === 'skipped' ? 'Изменить' : !historical && dose.status === 'pending' ? 'Ещё' : 'Подробнее'}
+            {dose.status === 'canceled' || !editable ? 'Подробнее' : !historical && dose.status === 'pending' ? 'Ещё' : 'Изменить'}
           </button>
         </div>
       </article>
     })}</div>
     {selected && <DoseDetails key={selected.id} dose={selected} tracker={tracker} now={now}
-      editable={editable && selected.status !== 'canceled' && (canRead || selected.scheduledAt.toMillis() <= now)}
+      editable={editable && selected.status !== 'canceled'}
+      canMark={canRead || selected.scheduledAt.toMillis() <= now}
       close={() => setSelection(undefined)} />}
   </>
 }
 
-function DoseDetails({ dose, tracker, now, editable, close }: {
-  dose: Dose; tracker: Tracker; now: number; editable: boolean; close: () => void
+function DoseDetails({ dose, tracker, now, editable, canMark, close }: {
+  dose: Dose; tracker: Tracker; now: number; editable: boolean; canMark: boolean; close: () => void
 }) {
   const { record, zone } = dose
   const action = useAction(editable)
+  const [deleting, setDeleting] = useState(false)
   const [status, setStatus] = useState(dose.status)
   const [unknown, setUnknown] = useState(record?.status === 'taken' && record.actualAt === null)
   const [quantity, setQuantity] = useState(String((record?.actualQuantity || dose.quantity) / 1000))
@@ -83,7 +86,7 @@ function DoseDetails({ dose, tracker, now, editable, close }: {
       {record && <p>Последняя отметка <strong>{timestampLabel(record.recordedAt, zone, true)}</strong></p>}
     </div>
     {changedElsewhere && <Failure>Запись изменилась. Откройте её снова.</Failure>}
-    {editable && <form className="stack" onSubmit={event => {
+    {editable && canMark && !deleting && <form className="stack" onSubmit={event => {
       event.preventDefault()
       void action.run(async () => {
         if (!canSave || status === 'canceled') return
@@ -112,9 +115,24 @@ function DoseDetails({ dose, tracker, now, editable, close }: {
         <label className="check-row"><input type="checkbox" checked={unknown} onChange={event => setUnknown(event.target.checked)} /> Точное время неизвестно</label>
         {!unknown && <Field label={`Фактическое время · ${zone}`}><input className="control" type="datetime-local" value={actual} onChange={event => setActual(event.target.value)} required /></Field>}
       </>}
-      {action.error && <Failure>{action.error}</Failure>}
       <button type="submit" className="btn" disabled={action.busy || !canSave}>Сохранить отметку</button>
     </form>}
+    {editable && (deleting ? <div className="notice error gap-top">
+      <p>Удалить этот приём? {isOneOff(dose) ? 'Запись исчезнет из календаря.' : 'Остальные приёмы по курсу сохранятся.'}
+        {dose.status === 'taken' && ' Списанное количество вернётся в остаток.'}</p>
+      <div className="row-actions">
+        <button type="button" className="btn destructive" disabled={action.busy || !canSave}
+          onClick={() => void action.run(async () => {
+            await tracker.saveDose(original, { status: 'canceled', actualAt: null, actualQuantity: 0 })
+            close()
+          })}>Подтвердить удаление</button>
+        <button type="button" className="btn secondary" disabled={action.busy} onClick={() => setDeleting(false)}>Назад</button>
+      </div>
+    </div> : <div className="row-actions">
+      <button type="button" className="btn destructive-outline" disabled={action.busy || !canSave}
+        onClick={() => setDeleting(true)}><Icon name="trash" /> Удалить приём</button>
+    </div>)}
+    {action.error && <Failure>{action.error}</Failure>}
     {record && <Audit tracker={tracker} id={dose.id} zone={dose.zone} kind="dose" />}
   </Dialog>
 }

@@ -73,6 +73,8 @@ export interface Settings extends Owned, Timing {
   privateText: boolean
 }
 
+export const ONE_OFF = 'oneOff'
+
 export interface DosePlan extends Owned, Timing {
   medicineId: string
   courseId: string
@@ -86,6 +88,10 @@ export interface DosePlan extends Owned, Timing {
   unit: string
   label: string
   quantity: number
+}
+
+export function isOneOff(dose: Pick<DosePlan, 'courseId'>) {
+  return dose.courseId === ONE_OFF
 }
 
 export interface DoseRecord extends DosePlan {

@@ -1,8 +1,9 @@
 import { groupBy } from './groupBy'
 import { Temporal } from '@js-temporal/polyfill'
 import type {
-  Calendar, Course, Dose, DosePlan, DoseRecord, DoseStatus, Pause, Row, ScheduleVersion, Validity,
+  Calendar, Course, Dose, DosePlan, DoseRecord, DoseStatus, Pause, Row, SavedStatus, ScheduleVersion, Validity,
 } from './models'
+import { isOneOff } from './models'
 import { daysBetween, logicalDay, slotTimes } from './time'
 
 export interface PlanData {
@@ -41,6 +42,7 @@ export function buildDoses(
           const canceled = (course.endedAt !== null && ms >= course.endedAt.toMillis()) ||
             pauses.get(course.id)?.some(pause => inside(ms, pause))
           const key = [course.id, logicalDate, slot.id].join('_')
+          // An elapsed occurrence keeps its slot for that logical date.
           const existing = bySlot.get(key)
           if (existing && existing.scheduledAt.toMillis() <= ms) continue
           bySlot.set(key, {
@@ -62,10 +64,15 @@ export function buildDoses(
 
   for (const row of records) {
     const { id, ...record } = row
+    if (record.status === 'canceled') {
+      // Keep the stored cancellation as a tombstone for this slot and date.
+      result.delete(id)
+      continue
+    }
     const plan = result.get(id)
     // A factual mark remains visible even after a schedule change. Undoing a
     // factual mark on an already withdrawn slot restores its cancellation.
-    const status = record.status === 'pending' ? plan?.status ?? 'canceled' : record.status
+    const status = record.status === 'pending' && !isOneOff(record) ? plan?.status ?? 'canceled' : record.status
     result.set(id, { ...record, id, status, record, courseRevision: plan?.courseRevision })
   }
   return [...result.values()].sort((a, b) =>
@@ -109,7 +116,7 @@ export function summarize(doses: Dose[], now: number) {
 }
 
 export interface DoseChange {
-  status: 'pending' | 'taken' | 'skipped'
+  status: SavedStatus
   actualAt: DoseRecord['actualAt']
   actualQuantity: number
 }

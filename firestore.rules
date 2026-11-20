@@ -164,6 +164,14 @@ service cloud.firestore {
             calendar.zone == d.zone && calendar.boundary == d.boundary &&
             d.scheduledAt >= calendar.from && d.scheduledAt < calendar.until;
         }
+        function validOneOff(d) {
+          let medicine = get(/databases/$(db)/documents/users/$(uid)/medicines/$(d.medicineId)).data;
+          let settings = get(/databases/$(db)/documents/users/$(uid)/settings/main).data;
+          return d.versionId == 'oneOff' && d.status == 'pending' && d.label == 'Разовый приём' &&
+            medicine.archived == false && medicine.name == d.name && medicine.unit == d.unit &&
+            settings.calendarId == d.calendarId && settings.zone == d.zone &&
+            settings.boundary == d.boundary && d.deadlineAt == d.scheduledAt + duration.value(1, 'h');
+        }
         function take(d, before) {
           let delta = (before == null ? 0 : before.actualQuantity) - d.actualQuantity;
           let eventId = 'dose_' + key + '_' + string(d.revision);
@@ -180,8 +188,11 @@ service cloud.firestore {
         }
         allow read: if allowed(uid);
         allow create: if allowed(uid) && valid(request.resource.data) && request.resource.data.revision == 1 &&
-          validPlan(request.resource.data) && take(request.resource.data, null);
+          (request.resource.data.courseId == 'oneOff'
+            ? validOneOff(request.resource.data) : validPlan(request.resource.data)) &&
+          take(request.resource.data, null);
         allow update: if allowed(uid) && valid(request.resource.data) &&
+          resource.data.status != 'canceled' &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','actualAt','actualQuantity','recordedAt','revision']) &&
           request.resource.data.revision == resource.data.revision + 1 &&
           take(request.resource.data, resource.data);

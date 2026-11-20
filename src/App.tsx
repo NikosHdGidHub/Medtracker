@@ -123,7 +123,7 @@ function Workspace({ tracker, settings, user, logout, profileFresh }: {
         </div>}
         <div key={page} className="page-view">
           {courseRows?.error && <Failure>{courseRows.error}</Failure>}
-          {page === 'today' && (range.error ? <Failure>{range.error}</Failure> : <TodayPage key={today} today={today} timing={settings}
+          {page === 'today' && (range.error ? <Failure>{range.error}</Failure> : <TodayPage key={today} today={today} settings={settings}
             now={now} doses={current} tracker={tracker} ready={range.ready && !!courseRows} editable={editable && range.fresh} />)}
           {page === 'meds' && courseRows && <MedicinesPage key={path} tracker={tracker} path={path} courses={courses}
             today={today} settings={settings} now={now} editable={editable} />}
