@@ -25,3 +25,9 @@ dist-ssr
 
 
 Medtracker_context.txt
+.env
+.env.*
+!.env.example
+.firebase/
+test-results/
+playwright-report/

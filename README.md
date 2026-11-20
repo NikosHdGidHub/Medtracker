@@ -1,75 +1,41 @@
-# React + TypeScript + Vite
+# Medtracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Medtracker — личный журнал лекарств для небольшой закрытой группы. На экране «Сегодня» можно подтвердить приём одним нажатием. В «Лекарствах» настраиваются расписание, курсы, паузы и запасы. Календарь открывает прошлые отметки и их изменения. Отчёты показывают выполнение плана за 7 или 30 завершённых логических дней.
 
-Currently, two official plugins are available:
+React, TypeScript и Vite формируют статический сайт для GitHub Pages. Firebase Authentication и Cloud Firestore обеспечивают вход, изоляцию и синхронизацию данных. Приложение рассчитано на Firebase Spark и работает без собственного сервера.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Запуск
 
-## React Compiler
+Требуются Node.js 24, npm и сконфигурированный Firebase. Для тестов Firebase Emulator Suite также подойдёт Java 25, как в CI.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm ci
+cp .env.example .env.local
+# Заполните .env.local по инструкции настройки Firebase.
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Откройте путь `/Medtracker/` на локальном сервере Vite. Зарегистрируйтесь, передайте UID владельцу проекта и дождитесь допуска. Добавьте первое лекарство, подтвердите приём и обновите страницу, чтобы проверить сохранение. Самостоятельный тестовый запуск без облачного аккаунта описан в [инструкции тестирования](docs/testing.md#локальный-запуск-с-эмуляторами).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run test:rules
+npm run test:e2e
+npm run build
+npm run preview
 ```
+
+После дедлайна приложение может напомнить о неподтверждённом приёме, пока браузер выполняет код сайта. При закрытии сайта, остановке вкладки или блокировке телефона доставка не гарантируется. При недоступности системных уведомлений сообщение появляется внутри приложения. Установленная PWA кэширует оболочку сайта. Для входа, чтения данных после нового запуска и сохранения изменений нужна связь с Firebase.
+
+## Документация
+
+- [Первичная настройка Firebase и допуск пользователей](docs/firebase-setup.md)
+- [Публикация на GitHub Pages и ограничения площадки](docs/deployment.md)
+- [Функциональная спецификация](docs/product-spec.md)
+- [Архитектура, приватность, экспорт и удаление](docs/architecture.md)
+- [Модель Firestore, индексы и оценка квот](docs/data-model.md)
+- [Автоматические и ручные проверки](docs/testing.md)
+
+Оригинальные [ТЗ](medtracker_frontend_tz.md) и [HTML-прототип](medtracker_ui_demo.html) оставлены для справки. Production-сборка публикует React-приложение.

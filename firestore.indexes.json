@@ -1,0 +1,105 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "scheduleVersions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "until",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "from",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "calendars",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "until",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "from",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pauses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "until",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "from",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "auditEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "entityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "auditEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "at",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "stockLedger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "medicineId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "auditEvents",
+      "fieldPath": "before",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "auditEvents",
+      "fieldPath": "after",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "scheduleVersions",
+      "fieldPath": "slots",
+      "indexes": []
+    }
+  ]
+}

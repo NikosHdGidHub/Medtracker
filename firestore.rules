@@ -1,0 +1,222 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function own(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    function allowed(uid) {
+      return own(uid) && get(/databases/$(db)/documents/access/$(uid)).data.enabled == true;
+    }
+    function fields(d, keys, uid) {
+      return d.keys().hasOnly(keys) && d.keys().hasAll(keys) && d.ownerId == uid;
+    }
+    function unchanged(d, keys) {
+      return !d.diff(resource.data).affectedKeys().hasAny(keys);
+    }
+    function text(s, min, max) {
+      return s is string && s.size() >= min && s.size() <= max;
+    }
+    function id(s) {
+      return s is string && s.matches('^[A-Za-z0-9_-]{1,180}$');
+    }
+    function integer(n, min, max) {
+      return n is int && n >= min && n <= max;
+    }
+    function date(s) {
+      return s is string && s.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$');
+    }
+    function clock(s) {
+      return s is string && s.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+    }
+    function zone(s) {
+      return s is string && s.size() <= 100 &&
+        s.matches('^(UTC|[A-Za-z_+-]+(/[A-Za-z0-9_+.-]+)+)$');
+    }
+    function interval(d) {
+      return d.from is timestamp && d.until is timestamp && d.until > d.from;
+    }
+    function slot(s) {
+      return s.keys().hasOnly(['id','label','time','deadline','quantity']) &&
+        s.id.matches('^[A-Za-z0-9_-]{1,180}$') && s.label is string && s.label.size() <= 60 &&
+        s.time.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$') &&
+        s.deadline.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$') &&
+        s.quantity is int && s.quantity > 0 && s.quantity <= 1000000000;
+    }
+    function slots(list) {
+      let count = list.size();
+      return list is list && count >= 1 && count <= 8 && slot(list[0]) &&
+        (count < 2 || slot(list[1])) && (count < 3 || slot(list[2])) &&
+        (count < 4 || slot(list[3])) && (count < 5 || slot(list[4])) &&
+        (count < 6 || slot(list[5])) && (count < 7 || slot(list[6])) &&
+        (count < 8 || slot(list[7]));
+    }
+    function close(uid) {
+      return request.resource.data.ownerId == uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['until']) &&
+        interval(request.resource.data) && request.resource.data.until < resource.data.until;
+    }
+    function stockChange(uid, medicineId, d, before) {
+      let entry = getAfter(/databases/$(db)/documents/users/$(uid)/stockLedger/$(d.stockEventId)).data;
+      return !exists(/databases/$(db)/documents/users/$(uid)/stockLedger/$(d.stockEventId)) &&
+        entry.medicineId == medicineId && entry.ownerId == uid &&
+        entry.balance == d.stock && entry.delta == d.stock - before;
+    }
+
+    match /access/{uid} {
+      allow get: if own(uid);
+    }
+    match /users/{uid} {
+      match /profile/{key} {
+        allow read: if allowed(uid);
+        allow create, update: if allowed(uid) && key == 'main' &&
+          fields(request.resource.data, ['ownerId','name'], uid) && text(request.resource.data.name, 0, 100);
+      }
+      match /settings/{key} {
+        function valid(d) {
+          let calendar = getAfter(/databases/$(db)/documents/users/$(uid)/calendars/$(d.calendarId)).data;
+          return fields(d, ['ownerId','calendarId','zone','boundary','reminders','repeatMinutes','repeats','privateText'], uid) &&
+            id(d.calendarId) && calendar.zone == d.zone && calendar.boundary == d.boundary &&
+            d.reminders is bool && d.privateText is bool &&
+            integer(d.repeatMinutes, 5, 60) && integer(d.repeats, 0, 5);
+        }
+        allow read: if allowed(uid);
+        allow create, update: if allowed(uid) && key == 'main' && valid(request.resource.data);
+      }
+      match /medicines/{key} {
+        function valid(d) {
+          return fields(d, ['ownerId','name','unit','strength','warningDays','stock','stockEventId','archived','currentCourseId'], uid) &&
+            text(d.name, 1, 120) && text(d.unit, 1, 20) && text(d.strength, 0, 60) &&
+            integer(d.warningDays, 0, 365) && integer(d.stock, -1000000000, 1000000000) &&
+            d.archived is bool && id(d.stockEventId) && id(d.currentCourseId);
+        }
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) && valid(request.resource.data) && request.resource.data.stock >= 0 &&
+          stockChange(uid, key, request.resource.data, 0);
+        allow update: if allowed(uid) && valid(request.resource.data) &&
+          (unchanged(request.resource.data, ['stock','stockEventId']) ||
+            stockChange(uid, key, request.resource.data, resource.data.stock));
+      }
+      match /courses/{key} {
+        function valid(d) {
+          return fields(d, ['ownerId','medicineId','versionId','revision','endedAt','manualPauseId'], uid) &&
+            id(d.medicineId) && id(d.versionId) && integer(d.revision, 1, 1000000000) &&
+            (d.endedAt == null || d.endedAt is timestamp) && (d.manualPauseId == null || id(d.manualPauseId));
+        }
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) && valid(request.resource.data) && request.resource.data.revision == 1;
+        allow update: if allowed(uid) && valid(request.resource.data) &&
+          unchanged(request.resource.data, ['medicineId']) &&
+          request.resource.data.revision == resource.data.revision + 1 &&
+          (resource.data.endedAt == null || unchanged(request.resource.data, ['endedAt']));
+      }
+      match /scheduleVersions/{key} {
+        function valid(d) {
+          return fields(d, ['ownerId','courseId','medicineId','from','until','name','unit','start','end','slots','weekdays'], uid) &&
+            id(d.courseId) && id(d.medicineId) && interval(d) && text(d.name, 1, 120) && text(d.unit, 1, 20) &&
+            date(d.start) && (d.end == null || (date(d.end) && d.start <= d.end)) &&
+            d.weekdays is list && d.weekdays.size() >= 1 && d.weekdays.size() <= 7 &&
+            d.weekdays.hasOnly([1,2,3,4,5,6,7]) && slots(d.slots);
+        }
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) && valid(request.resource.data);
+        allow update: if allowed(uid) && close(uid);
+      }
+      match /calendars/{key} {
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) &&
+          fields(request.resource.data, ['ownerId','from','until','zone','boundary'], uid) &&
+          interval(request.resource.data) && zone(request.resource.data.zone) && clock(request.resource.data.boundary);
+        allow update: if allowed(uid) && close(uid);
+      }
+      match /pauses/{key} {
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) &&
+          fields(request.resource.data, ['ownerId','courseId','from','until','mode'], uid) &&
+          id(request.resource.data.courseId) && interval(request.resource.data) &&
+          request.resource.data.mode in ['manual','dates'];
+        allow update: if allowed(uid) && resource.data.mode == 'manual' && close(uid);
+      }
+      match /doses/{key} {
+        function valid(d) {
+          return fields(d, ['ownerId','medicineId','courseId','versionId','calendarId','slotId','logicalDate',
+            'scheduledAt','deadlineAt','name','unit','label','quantity','zone','boundary','status',
+            'actualAt','actualQuantity','recordedAt','revision'], uid) &&
+            id(d.medicineId) && id(d.courseId) && id(d.versionId) && id(d.calendarId) && id(d.slotId) &&
+            date(d.logicalDate) && key == d.versionId + '_' + d.calendarId + '_' + d.logicalDate + '_' + d.slotId &&
+            d.scheduledAt is timestamp && d.deadlineAt is timestamp && d.deadlineAt >= d.scheduledAt &&
+            d.deadlineAt <= d.scheduledAt + duration.value(48, 'h') &&
+            text(d.name, 1, 120) && text(d.unit, 1, 20) && text(d.label, 0, 60) &&
+            zone(d.zone) && clock(d.boundary) && integer(d.quantity, 1, 1000000000) &&
+            d.status in ['pending','taken','skipped','canceled'] && d.recordedAt is timestamp &&
+            integer(d.revision, 1, 1000000000) &&
+            (d.status == 'taken' ? ((d.actualAt == null || d.actualAt is timestamp) &&
+              integer(d.actualQuantity, 1, 1000000000)) : (d.actualAt == null && d.actualQuantity == 0));
+        }
+        function validPlan(d) {
+          let course = get(/databases/$(db)/documents/users/$(uid)/courses/$(d.courseId)).data;
+          let version = get(/databases/$(db)/documents/users/$(uid)/scheduleVersions/$(d.versionId)).data;
+          let calendar = get(/databases/$(db)/documents/users/$(uid)/calendars/$(d.calendarId)).data;
+          return course.medicineId == d.medicineId && version.medicineId == d.medicineId &&
+            version.courseId == d.courseId && version.name == d.name && version.unit == d.unit &&
+            d.logicalDate >= version.start && (version.end == null || d.logicalDate <= version.end) &&
+            d.scheduledAt >= version.from && d.scheduledAt < version.until &&
+            (course.endedAt == null || d.scheduledAt < course.endedAt) &&
+            calendar.zone == d.zone && calendar.boundary == d.boundary &&
+            d.scheduledAt >= calendar.from && d.scheduledAt < calendar.until;
+        }
+        function take(d, before) {
+          let delta = (before == null ? 0 : before.actualQuantity) - d.actualQuantity;
+          let eventId = 'dose_' + key + '_' + string(d.revision);
+          let audit = getAfter(/databases/$(db)/documents/users/$(uid)/auditEvents/$(eventId)).data;
+          return audit.entityId == key && audit.medicineId == d.medicineId && audit.action == 'dose_changed' &&
+            audit.before == before && audit.after == d && audit.at == d.recordedAt &&
+            (delta == 0 || compensate(d, delta, eventId));
+        }
+        function compensate(d, delta, eventId) {
+          let entry = getAfter(/databases/$(db)/documents/users/$(uid)/stockLedger/$(eventId)).data;
+          let medicine = getAfter(/databases/$(db)/documents/users/$(uid)/medicines/$(d.medicineId)).data;
+          return entry.doseId == key && entry.delta == delta && entry.medicineId == d.medicineId &&
+            entry.kind in ['dose','correction'] && medicine.stockEventId == eventId && medicine.stock == entry.balance;
+        }
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) && valid(request.resource.data) && request.resource.data.revision == 1 &&
+          validPlan(request.resource.data) && take(request.resource.data, null);
+        allow update: if allowed(uid) && valid(request.resource.data) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','actualAt','actualQuantity','recordedAt','revision']) &&
+          request.resource.data.revision == resource.data.revision + 1 &&
+          take(request.resource.data, resource.data);
+      }
+      match /stockLedger/{key} {
+        function valid(d) {
+          return fields(d, ['ownerId','medicineId','doseId','delta','kind','balance','at'], uid) &&
+            id(d.medicineId) && d.at is timestamp && integer(d.delta, -2000000000, 2000000000) &&
+            integer(d.balance, -1000000000, 1000000000) &&
+            ((d.kind in ['dose','correction'] && id(d.doseId)) ||
+              (d.kind in ['initial','restock','inventory'] && d.doseId == null)) &&
+            (d.kind != 'restock' || d.delta > 0) &&
+            (d.kind != 'initial' || (d.delta >= 0 && d.balance == d.delta && key == 'initial_' + d.medicineId)) &&
+            (d.kind != 'inventory' || d.balance >= 0) && (d.kind != 'dose' || d.delta < 0) &&
+            getAfter(/databases/$(db)/documents/users/$(uid)/medicines/$(d.medicineId)).data.stockEventId == key;
+        }
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) && valid(request.resource.data);
+      }
+      match /auditEvents/{key} {
+        function valid(d) {
+          return fields(d, ['ownerId','entityId','medicineId','action','at','before','after'], uid) &&
+            id(d.entityId) && (d.medicineId == null || id(d.medicineId)) && d.at is timestamp &&
+            d.action in ['medicine_created','schedule_updated','pause','resume','dates','end','archive','restart','restock','inventory','dose_changed'] &&
+            (d.before == null || d.before is map) && (d.after == null || d.after is map);
+        }
+        allow read: if allowed(uid);
+        allow create: if allowed(uid) && valid(request.resource.data);
+      }
+      match /deletion/{key} {
+        allow get, list: if allowed(uid);
+        allow create: if allowed(uid) && key == 'main' &&
+          fields(request.resource.data, ['ownerId','requestedAt'], uid) && request.resource.data.requestedAt is timestamp;
+        allow delete: if allowed(uid) && key == 'main';
+      }
+    }
+  }
+}
