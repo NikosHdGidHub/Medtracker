@@ -25,6 +25,8 @@ dist-ssr
 
 
 Medtracker_context.txt
+Prompt.md
+
 .env
 .env.*
 !.env.example

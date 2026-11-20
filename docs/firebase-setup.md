@@ -22,7 +22,7 @@
 
 ```bash
 npx firebase login
-npx firebase deploy --only firestore:rules,firestore:indexes --project <PROJECT_ID>
+npx firebase deploy --only firestore:rules,firestore:indexes --project medtracker-156e8
 ```
 
 Используйте учётную запись владельца целевого проекта. На вкладке Indexes дождитесь готовности индексов. На вкладке Data создайте коллекцию `access` при добавлении первого пользователя. Коллекции под `users/{UID}` создаются при первом допущенном входе и последующих операциях приложения. Родительский документ `users/{UID}` может выглядеть как отсутствующий документ при наличии подколлекций.
