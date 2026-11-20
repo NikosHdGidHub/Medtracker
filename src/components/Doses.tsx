@@ -47,7 +47,7 @@ export function DoseList({ doses, now, tracker, historical = false, editable, ca
           </div>
         </div>
         <div className="dose-actions">
-          {!historical && dose.status === 'pending' && <button className="btn smallbtn" disabled={action.busy || !editable}
+          {!historical && dose.status === 'pending' && <button className="btn dose-confirm" disabled={action.busy || !editable}
             onClick={() => void action.run(() => tracker.saveDose(dose, { status: 'taken', actualAt: Timestamp.now(), actualQuantity: dose.quantity }, true))}>✓ Принял</button>}
           <button className="btn secondary smallbtn" onClick={() => setSelection(dose.id)} aria-label={`Карточка приёма «${dose.name}»`}>
             {dose.status === 'canceled' || !editable ? 'Подробнее' : !historical && dose.status === 'pending' ? 'Ещё' : 'Изменить'}

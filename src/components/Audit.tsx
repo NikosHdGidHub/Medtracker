@@ -8,6 +8,7 @@ import { Failure } from './common'
 import { useAction } from './useAction'
 
 const labels: Record<string, string> = {
+  stock_configured: 'Настройка запаса',
   medicine_created: 'Добавление лекарства', schedule_updated: 'Изменение расписания',
   pause: 'Начало паузы', resume: 'Возобновление', dates: 'Пауза по датам', end: 'Завершение',
   archive: 'Архивирование', restart: 'Новый курс', restock: 'Пополнение', inventory: 'Инвентаризация',

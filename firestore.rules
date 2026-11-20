@@ -87,14 +87,19 @@ service cloud.firestore {
           return fields(d, ['ownerId','name','unit','strength','warningDays','stock','stockEventId','archived','currentCourseId'], uid) &&
             text(d.name, 1, 120) && text(d.unit, 1, 20) && text(d.strength, 0, 60) &&
             integer(d.warningDays, 0, 365) && integer(d.stock, -1000000000, 1000000000) &&
-            d.archived is bool && id(d.stockEventId) && id(d.currentCourseId);
+            d.archived is bool && id(d.currentCourseId) &&
+            (d.stockEventId == null ? d.stock == 0 : id(d.stockEventId));
         }
         allow read: if allowed(uid);
         allow create: if allowed(uid) && valid(request.resource.data) && request.resource.data.stock >= 0 &&
-          stockChange(uid, key, request.resource.data, 0);
+          (request.resource.data.stockEventId == null ||
+            (request.resource.data.stockEventId == 'initial_' + key &&
+              stockChange(uid, key, request.resource.data, 0)));
         allow update: if allowed(uid) && valid(request.resource.data) &&
           (unchanged(request.resource.data, ['stock','stockEventId']) ||
-            stockChange(uid, key, request.resource.data, resource.data.stock));
+            (request.resource.data.stockEventId != null &&
+              (resource.data.stockEventId != null || request.resource.data.stockEventId == 'initial_' + key) &&
+              stockChange(uid, key, request.resource.data, resource.data.stock)));
       }
       match /courses/{key} {
         function valid(d) {
@@ -138,9 +143,11 @@ service cloud.firestore {
       }
       match /doses/{key} {
         function valid(d) {
-          return fields(d, ['ownerId','medicineId','courseId','versionId','calendarId','slotId','logicalDate',
+          let required = ['ownerId','medicineId','courseId','versionId','calendarId','slotId','logicalDate',
             'scheduledAt','deadlineAt','name','unit','label','quantity','zone','boundary','status',
-            'actualAt','actualQuantity','recordedAt','revision'], uid) &&
+            'actualAt','actualQuantity','recordedAt','revision'];
+          return d.keys().hasAll(required) && d.keys().hasOnly(required.concat(['stockTracked'])) &&
+            (!('stockTracked' in d) || d.stockTracked == false) && d.ownerId == uid &&
             id(d.medicineId) && id(d.courseId) && id(d.versionId) && id(d.calendarId) && id(d.slotId) &&
             date(d.logicalDate) && key == d.versionId + '_' + d.calendarId + '_' + d.logicalDate + '_' + d.slotId &&
             d.scheduledAt is timestamp && d.deadlineAt is timestamp && d.deadlineAt >= d.scheduledAt &&
@@ -170,7 +177,13 @@ service cloud.firestore {
           return d.versionId == 'oneOff' && d.status == 'pending' && d.label == 'Разовый приём' &&
             medicine.archived == false && medicine.name == d.name && medicine.unit == d.unit &&
             settings.calendarId == d.calendarId && settings.zone == d.zone &&
-            settings.boundary == d.boundary && d.deadlineAt == d.scheduledAt + duration.value(1, 'h');
+            settings.boundary == d.boundary && d.deadlineAt <= d.scheduledAt + duration.value(26, 'h');
+        }
+        function stockFlagMatches(d, before) {
+          let ignored = (before != null && before.get('stockTracked', true) == false) ||
+            (d.status == 'taken' &&
+              get(/databases/$(db)/documents/users/$(uid)/medicines/$(d.medicineId)).data.stockEventId == null);
+          return d.get('stockTracked', true) == !ignored;
         }
         function take(d, before) {
           let delta = (before == null ? 0 : before.actualQuantity) - d.actualQuantity;
@@ -178,7 +191,8 @@ service cloud.firestore {
           let audit = getAfter(/databases/$(db)/documents/users/$(uid)/auditEvents/$(eventId)).data;
           return audit.entityId == key && audit.medicineId == d.medicineId && audit.action == 'dose_changed' &&
             audit.before == before && audit.after == d && audit.at == d.recordedAt &&
-            (delta == 0 || compensate(d, delta, eventId));
+            stockFlagMatches(d, before) &&
+            (d.get('stockTracked', true) == false || delta == 0 || compensate(d, delta, eventId));
         }
         function compensate(d, delta, eventId) {
           let entry = getAfter(/databases/$(db)/documents/users/$(uid)/stockLedger/$(eventId)).data;
@@ -193,7 +207,7 @@ service cloud.firestore {
           take(request.resource.data, null);
         allow update: if allowed(uid) && valid(request.resource.data) &&
           resource.data.status != 'canceled' &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','actualAt','actualQuantity','recordedAt','revision']) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','actualAt','actualQuantity','stockTracked','recordedAt','revision']) &&
           request.resource.data.revision == resource.data.revision + 1 &&
           take(request.resource.data, resource.data);
       }
@@ -205,7 +219,8 @@ service cloud.firestore {
             ((d.kind in ['dose','correction'] && id(d.doseId)) ||
               (d.kind in ['initial','restock','inventory'] && d.doseId == null)) &&
             (d.kind != 'restock' || d.delta > 0) &&
-            (d.kind != 'initial' || (d.delta >= 0 && d.balance == d.delta && key == 'initial_' + d.medicineId)) &&
+            ((d.kind == 'initial') == (key == 'initial_' + d.medicineId)) &&
+            (d.kind != 'initial' || (d.delta >= 0 && d.balance == d.delta)) &&
             (d.kind != 'inventory' || d.balance >= 0) && (d.kind != 'dose' || d.delta < 0) &&
             getAfter(/databases/$(db)/documents/users/$(uid)/medicines/$(d.medicineId)).data.stockEventId == key;
         }
@@ -216,7 +231,7 @@ service cloud.firestore {
         function valid(d) {
           return fields(d, ['ownerId','entityId','medicineId','action','at','before','after'], uid) &&
             id(d.entityId) && (d.medicineId == null || id(d.medicineId)) && d.at is timestamp &&
-            d.action in ['medicine_created','schedule_updated','pause','resume','dates','end','archive','restart','restock','inventory','dose_changed'] &&
+            d.action in ['medicine_created','schedule_updated','pause','resume','dates','end','archive','restart','restock','inventory','stock_configured','dose_changed'] &&
             (d.before == null || d.before is map) && (d.after == null || d.after is map);
         }
         allow read: if allowed(uid);

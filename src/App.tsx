@@ -1,8 +1,9 @@
+import { tracksStock } from './domain/models'
 import { useEffect, useMemo, useState } from 'react'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
-import type { Course, Settings } from './domain/models'
+import type { Course, Medicine, Settings } from './domain/models'
 import { addDays, logicalDay } from './domain/time'
 import { useClock, usePlanned, useRows, useSettings } from './hooks/data'
 import { useNotifications } from './hooks/notifications'
@@ -101,7 +102,15 @@ function Workspace({ tracker, settings, user, logout, profileFresh }: {
     !!courseRows && (page === 'today' || settings.reminders))
   const current = useMemo(() => range.doses.filter(dose => dose.logicalDate === today), [range.doses, today])
   const editable = profileFresh && !!courseRows?.fresh && navigator.onLine
-  const notifications = useNotifications(range.doses, now, today, settings, editable && range.fresh)
+  const medicineSource = useMemo(() => settings.reminders ? tracker.group('medicines') : null,
+    [settings.reminders, tracker])
+  const medicineRows = useRows<Medicine>(tracker, medicineSource)
+  const reminderDoses = useMemo(() => {
+    const tracked = new Set(medicineRows?.data.filter(tracksStock).map(medicine => medicine.id))
+    return range.doses.filter(dose => tracked.has(dose.medicineId))
+  }, [medicineRows?.data, range.doses])
+  const notifications = useNotifications(reminderDoses, now, today, settings,
+    editable && range.fresh && !!medicineRows?.fresh)
 
   const links = (compact: boolean) => navigation.slice(0, compact ? 4 : 5).map(([route, label]) => <a
     href={`#/${route}`} key={route} aria-current={page === route ? 'page' : undefined}

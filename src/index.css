@@ -499,3 +499,15 @@ p, .panel, .dialog, .sidebar-foot { overflow-wrap: anywhere; }
 @keyframes slide-in { from { opacity: .3; transform: translateX(4px); } to { opacity: 1; transform: none; } }
 @keyframes dialog-in { from { opacity: .3; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.notice.warn { background: var(--amber-soft); border-color: #e5cc93; color: var(--amber); }
+.course-actions { margin-top: 14px; }
+.course-actions summary { width: fit-content; min-height: 44px; padding-block: 10px; color: var(--muted); cursor: pointer; }
+.dose-confirm { min-height: 48px; }
+
+@media (max-width: 760px) {
+  .top-actions .today-add { flex: 1; min-height: 48px; }
+  .dose-actions .dose-confirm { flex: 1 1 95px; }
+  .dose-actions:has(.dose-confirm) .secondary { flex: 0 0 auto; min-width: 64px; }
+  .wizard-actions .btn[type="submit"] { flex: 1; min-height: 48px; }
+}

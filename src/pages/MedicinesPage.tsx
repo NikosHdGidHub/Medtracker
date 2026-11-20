@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { query, where } from 'firebase/firestore'
 import type { Course, Dose, Medicine, Pause, Row, Schedule, ScheduleVersion, Settings, Slot } from '../domain/models'
-import { EVERY_DAY, MAX_SLOTS, quantityLabel, toUnits, WEEKDAYS } from '../domain/models'
+import { EVERY_DAY, MAX_SLOTS, quantityLabel, toUnits, tracksStock, WEEKDAYS } from '../domain/models'
 import { buildDoses } from '../domain/planning'
 import { addDays, dateLabel, LAST_INSTANT, timestampLabel } from '../domain/time'
 import { useRange, useRows } from '../hooks/data'
@@ -10,6 +10,12 @@ import { Icon } from '../components/Icon'
 import { Audit } from '../components/Audit'
 import { Dialog, Empty, Failure, Field, Header } from '../components/common'
 import { useAction } from '../components/useAction'
+
+const UNITS = [
+  ['табл.', 'Таблетки'], ['капс.', 'Капсулы'], ['мл', 'Миллилитры'], ['кап.', 'Капли'],
+  ['доза', 'Дозы'], ['пак.', 'Пакетики'], ['амп.', 'Ампулы'], ['шт.', 'Штуки'],
+  ['г', 'Граммы'], ['мг', 'Миллиграммы'], ['мкг', 'Микрограммы'], ['ед.', 'Единицы'],
+]
 
 type Item = { medicine: Row<Medicine>; course: Row<Course>; version: Row<ScheduleVersion> }
 
@@ -53,7 +59,8 @@ export function MedicinesPage({ tracker, path, courses, today, settings, now, ed
       return <a className="panel med-list-card" href={`#/meds/${medicine.id}`} key={medicine.id}>
         <div className="med-icon"><Icon name="meds" /></div>
         <div><h2>{medicine.name}</h2><p className="muted">{medicine.unit}{medicine.strength && ` · ${medicine.strength}`} · {scheduleLabel(version)}</p>
-          <p>Остаток <strong>{quantityLabel(medicine.stock)} {medicine.unit}</strong></p></div>
+          {tracksStock(medicine) ? <p>Остаток <strong>{quantityLabel(medicine.stock)} {medicine.unit}</strong></p>
+            : <p className="muted">Запас не настроен</p>}</div>
         <span className={`chip ${status === 'Активен' ? '' : 'neutral'}`}>{status}</span>
       </a>
     })}</div> : <Empty>Добавьте первое лекарство, чтобы составить расписание.</Empty>}
@@ -72,25 +79,42 @@ function MedicineDetails({ item, tracker, today, settings, now, editable, course
   item: Item; tracker: Tracker; today: string; settings: Settings; now: number; editable: boolean; courses: Row<Course>[]
 }) {
   const { medicine, course, version } = item
-  const [modal, setModal] = useState<'stock' | 'pause' | 'end' | 'archive' | 'restart'>()
+  const [modal, setModal] = useState<'stock' | 'setup' | 'pause' | 'end' | 'archive' | 'restart'>()
   const action = useAction(editable)
   const ended = finished(item, today)
+  const stockTracked = tracksStock(medicine)
   const forecastRange = useRange(tracker, today, addDays(today, 90))
-  const planned = useMemo(() => forecastRange.versions && forecastRange.calendars && forecastRange.pauses && forecastRange.records
+  const planned = useMemo(() => stockTracked && forecastRange.versions && forecastRange.calendars && forecastRange.pauses && forecastRange.records
     ? buildDoses(today, addDays(today, 90), {
       courses,
       versions: forecastRange.versions.filter(entry => entry.medicineId === medicine.id),
       calendars: forecastRange.calendars, pauses: forecastRange.pauses,
     }, forecastRange.records.filter(entry => entry.medicineId === medicine.id))
-    : [], [courses, forecastRange.calendars, forecastRange.pauses, forecastRange.records, forecastRange.versions, medicine.id, today])
-  const depletion = firstDepletion(planned, medicine.stock, now)
+    : [], [courses, forecastRange.calendars, forecastRange.pauses, forecastRange.records, forecastRange.versions, medicine.id, stockTracked, today])
+  const depletion = stockTracked ? firstDepletion(planned, medicine.stock, now) : undefined
   const pauseActive = forecastRange.pauses?.some((pause: Row<Pause>) => pause.courseId === course.id &&
     pause.from.toMillis() <= now && now < pause.until.toMillis())
-  const low = medicine.stock <= 0 || (depletion && depletion.logicalDate <= addDays(today, medicine.warningDays))
+  const low = stockTracked && (medicine.stock <= 0 || (depletion && depletion.logicalDate <= addDays(today, medicine.warningDays)))
   return <>
     <Header title={medicine.name} subtitle={[medicine.unit, medicine.strength, scheduleLabel(version)].filter(Boolean).join(' · ')}>
       <a className="btn secondary" href="#/meds">Все лекарства</a>
     </Header>
+    <section className="panel">
+      <div className="panel-head"><h2>Запасы</h2>{low && <span className="chip warn">Малый остаток</span>}</div>
+      {stockTracked ? <>
+        <div className="stock-line"><strong>{quantityLabel(medicine.stock)}</strong> {medicine.unit}</div>
+        <p className="muted">{forecastRange.error ? 'Прогноз недоступен.' : medicine.stock < 0 ? 'По журналу расход превышает запас. Сверьте фактический остаток.' :
+          ended ? 'Курс завершён.' : depletion ? `По расписанию запас иссякнет ${dateLabel(depletion.logicalDate)}`
+            : forecastRange.ready ? 'По текущему расписанию запас не иссякнет в ближайшие 90 дней.' : 'Расчёт прогноза…'}</p>
+        <div className="row-actions"><button className="btn" disabled={!editable} onClick={() => setModal('stock')}>Изменить остаток</button></div>
+        <Audit tracker={tracker} id={medicine.id} zone={settings.zone} kind="stock" />
+      </> : <>
+        <p className="notice warn"><strong>Запас не настроен.</strong> Приёмы сохраняются в истории. Учёт остатка и напоминания по этому лекарству выключены.</p>
+        <div className="row-actions">
+          <button className="btn" disabled={!editable} onClick={() => setModal('setup')}>Настроить запас</button>
+        </div>
+      </>}
+    </section>
     <section className="panel">
       <div className="panel-head"><h2>Курс и расписание</h2><span className="chip">
         {medicine.archived ? 'В архиве' : ended ? 'Завершён' : pauseActive ? 'Пауза' : version.start > today ? 'Запланирован' : 'Активен'}
@@ -104,27 +128,25 @@ function MedicineDetails({ item, tracker, today, settings, now, editable, course
         <p className="small muted" key={pause.id}>Пауза с {timestampLabel(pause.from, settings.zone, true)} до {timestampLabel(pause.until, settings.zone, true)}</p>)}
       <div className="row-actions">
         {!ended && !medicine.archived && <>
-          <a className="btn secondary" href={`#/meds/${medicine.id}/edit`}>Редактировать</a>
+          <a className="btn" href={`#/meds/${medicine.id}/edit`}>Редактировать</a>
           <button className="btn secondary" disabled={action.busy || !editable}
             onClick={() => void action.run(() => tracker.changeCourse(medicine, course, course.manualPauseId ? 'resume' : 'pause'))}>
             {course.manualPauseId ? 'Возобновить' : 'Пауза сейчас'}
           </button>
-          <button className="btn secondary" disabled={!editable} onClick={() => setModal('pause')}>Пауза по датам</button>
-          <button className="btn secondary" disabled={!editable} onClick={() => setModal('end')}>Завершить</button>
         </>}
         {ended && <button className="btn secondary" disabled={!editable} onClick={() => setModal('restart')}>Начать новый курс</button>}
-        {!medicine.archived && <button className="btn secondary" disabled={!editable} onClick={() => setModal('archive')}>В архив</button>}
       </div>
+      {!medicine.archived && <details className="course-actions">
+        <summary>Другие действия</summary>
+        <div className="row-actions">
+          {!ended && <>
+            <button className="btn secondary smallbtn" disabled={!editable} onClick={() => setModal('pause')}>Пауза по датам</button>
+            <button className="btn secondary smallbtn" disabled={!editable} onClick={() => setModal('end')}>Завершить</button>
+          </>}
+          <button className="btn secondary smallbtn" disabled={!editable} onClick={() => setModal('archive')}>В архив</button>
+        </div>
+      </details>}
       {action.error && <Failure>{action.error}</Failure>}
-    </section>
-    <section className="panel">
-      <div className="panel-head"><h2>Запасы</h2>{low && <span className="chip warn">Малый остаток</span>}</div>
-      <div className="stock-line"><strong>{quantityLabel(medicine.stock)}</strong> {medicine.unit}</div>
-      <p className="muted">{forecastRange.error ? 'Прогноз недоступен.' : medicine.stock < 0 ? 'По журналу расход превышает запас. Сверьте фактический остаток.' :
-        ended ? 'Курс завершён.' : depletion ? `По расписанию запас иссякнет ${dateLabel(depletion.logicalDate)}`
-          : forecastRange.ready ? 'По текущему расписанию запас не иссякнет в ближайшие 90 дней.' : 'Расчёт прогноза…'}</p>
-      <div className="row-actions"><button className="btn secondary" disabled={!editable} onClick={() => setModal('stock')}>Изменить остаток</button></div>
-      <Audit tracker={tracker} id={medicine.id} zone={settings.zone} kind="stock" />
     </section>
     <section className="panel"><Audit tracker={tracker} id={medicine.id} zone={settings.zone} kind="medicine" /></section>
     {modal && <MedicineOperation mode={modal} close={() => setModal(undefined)} item={item} today={today} tracker={tracker} editable={editable} />}
@@ -141,24 +163,27 @@ function firstDepletion(doses: Dose[], stock: number, now: number) {
 }
 
 function MedicineOperation({ mode, close, item, today, tracker, editable }: {
-  mode: 'stock' | 'pause' | 'end' | 'archive' | 'restart'; close: () => void; item: Item; today: string; tracker: Tracker; editable: boolean
+  mode: 'stock' | 'setup' | 'pause' | 'end' | 'archive' | 'restart'; close: () => void; item: Item; today: string; tracker: Tracker; editable: boolean
 }) {
   const action = useAction(editable)
-  const title = { stock: 'Изменить остаток', pause: 'Пауза по датам', end: 'Завершить курс', archive: 'Архивировать', restart: 'Начать новый курс' }[mode]
+  const title = { stock: 'Изменить остаток', setup: 'Настроить запас', pause: 'Пауза по датам', end: 'Завершить курс', archive: 'Архивировать', restart: 'Начать новый курс' }[mode]
   return <Dialog title={title} close={close} busy={action.busy}>
     <form className="stack" onSubmit={event => {
       event.preventDefault()
       const data = new FormData(event.currentTarget)
       void action.run(async () => {
-        if (mode === 'stock') await tracker.updateStock(item.medicine.id, data.get('kind') === 'inventory' ? 'inventory' : 'restock', toUnits(String(data.get('quantity'))))
-        else await tracker.changeCourse(item.medicine, item.course, mode === 'pause' ? 'dates' : mode, {
+        if (mode === 'stock' || mode === 'setup') {
+          const operation = mode === 'setup' ? 'setup' : data.get('kind') === 'inventory' ? 'inventory' : 'restock'
+          await tracker.updateStock(item.medicine.id, operation, toUnits(String(data.get('quantity'))))
+        } else await tracker.changeCourse(item.medicine, item.course, mode === 'pause' ? 'dates' : mode, {
           first: String(data.get('first') ?? today), last: String(data.get('last') ?? today),
         })
         close()
       })
     }}>
-      {mode === 'stock' && <>
-        <Field label="Операция"><select className="control" name="kind"><option value="restock">Добавить к остатку</option><option value="inventory">Установить фактический остаток</option></select></Field>
+      {(mode === 'stock' || mode === 'setup') && <>
+        {mode === 'stock' ? <Field label="Операция"><select className="control" name="kind"><option value="restock">Добавить к остатку</option><option value="inventory">Установить фактический остаток</option></select></Field>
+          : <p>Укажите, сколько осталось сейчас. Отметки, сделанные до настройки запаса, сохранятся как есть.</p>}
         <Field label={`Количество · ${item.medicine.unit}`}><input className="control" name="quantity" type="number" min="0" step="0.001" required /></Field>
       </>}
       {(mode === 'pause' || mode === 'restart') && <Field label={mode === 'pause' ? 'Начало паузы' : 'Дата начала нового курса'}>
@@ -187,7 +212,8 @@ function MedicineWizard({ tracker, today, previous, editable }: {
   const [end, setEnd] = useState(previous?.version.end ?? '')
   const [weekdays, setWeekdays] = useState(previous?.version.weekdays ?? EVERY_DAY)
   const [slots, setSlots] = useState<SlotForm[]>(() => previous?.version.slots.map(slot => ({ ...slot, amount: String(slot.quantity / 1000) })) ?? [newSlot()])
-  const [stock, setStock] = useState('0')
+  const [stock, setStock] = useState('')
+  const stockEnabled = previous ? tracksStock(previous.medicine) : stock.trim() !== ''
   const [validation, setValidation] = useState('')
   const action = useAction(editable)
   const steps = ['Препарат', 'Периодичность', 'Приёмы', 'Запасы', 'Проверка']
@@ -202,7 +228,7 @@ function MedicineWizard({ tracker, today, previous, editable }: {
       const keys = slots.map(slot => `${slot.time}|${slot.deadline}|${toUnits(slot.amount)}|${slot.label.trim().toLowerCase()}`)
       if (new Set(keys).size !== keys.length) throw new Error('Одинаковые слоты нужно объединить или назвать по-разному.')
     }
-    if (step === 3) toUnits(stock)
+    if (step === 3 && !previous && stockEnabled) toUnits(stock)
   }
 
   return <>
@@ -221,7 +247,7 @@ function MedicineWizard({ tracker, today, previous, editable }: {
           const id = await tracker.saveMedicine({ ...input, name: input.name.trim(), unit: input.unit.trim(), strength: input.strength.trim() }, {
             start, end: end || null, weekdays: [...weekdays].sort(),
             slots: slots.map(({ id, label, time, deadline, amount }) => ({ id, label: label.trim(), time, deadline, quantity: toUnits(amount) })),
-          }, toUnits(stock), original)
+          }, !previous && stockEnabled ? toUnits(stock) : null, original)
           if (window.location.hash === previousRoute) window.location.hash = `/meds/${id}`
         })
       }}>
@@ -229,7 +255,12 @@ function MedicineWizard({ tracker, today, previous, editable }: {
           <h2>{steps[step]}</h2>
           {step === 0 && <>
             <Field label="Название"><input className="control" autoComplete="off" required maxLength={120} value={input.name} onChange={event => setInput({ ...input, name: event.target.value })} /></Field>
-            <Field label="Единица учёта (например, табл., капс., мл)"><input className="control" required maxLength={20} value={input.unit} onChange={event => setInput({ ...input, unit: event.target.value })} /></Field>
+            <Field label="Единица учёта"><select className="control" required value={input.unit}
+              onChange={event => setInput({ ...input, unit: event.target.value })}>
+              {previous && !UNITS.some(([value]) => value === previous.medicine.unit) &&
+                <option value={previous.medicine.unit}>{previous.medicine.unit}</option>}
+              {UNITS.map(([value, label]) => <option key={value} value={value}>{label} ({value})</option>)}
+            </select></Field>
             <Field label="Сила одной единицы, если нужна"><input className="control" maxLength={60} value={input.strength} onChange={event => setInput({ ...input, strength: event.target.value })} /></Field>
           </>}
           {step === 1 && <>
@@ -255,21 +286,25 @@ function MedicineWizard({ tracker, today, previous, editable }: {
             {slots.length >= MAX_SLOTS && <p className="small muted">В одном расписании можно сохранить до {MAX_SLOTS} приёмов в день.</p>}
           </>}
           {step === 3 && <>
-            {!previous && <Field label="Начальный остаток"><input className="control" type="number" min="0" step="0.001" required value={stock} onChange={event => setStock(event.target.value)} /></Field>}
-            <Field label="Предупреждать об исчерпании за столько дней"><input className="control" type="number" required min="0" max="365" value={input.warningDays}
+            {!previous && <Field label={`Начальный остаток · ${input.unit} (необязательно)`}><input className="control" type="number" min="0" max="1000000" step="0.001"
+              value={stock} onChange={event => setStock(event.target.value)} /></Field>}
+            {stockEnabled ? <Field label="За сколько дней предупреждать о малом остатке"><input className="control" type="number" required min="0" max="365" value={input.warningDays}
               onChange={event => setInput({ ...input, warningDays: Number(event.target.value) })} /></Field>
+              : <p className="muted">{previous ? 'Запас можно настроить в карточке лекарства.'
+                : 'Если остаток неизвестен, оставьте поле пустым. Если лекарства уже нет, укажите 0.'}</p>}
           </>}
           {step === 4 && <div className="summary-card">
             <h3>{input.name} · {input.unit}{input.strength && ` · ${input.strength}`}</h3>
             <p>{weekdays.length === 7 ? 'Ежедневно' : weekdays.map(day => WEEKDAYS[day - 1]).join(', ')} · {dateLabel(start)} — {end ? dateLabel(end) : 'бессрочно'}</p>
             <ul>{slots.map(slot => <li key={slot.id}>{slot.time} → {slot.deadline} · {slot.amount} {input.unit} {slot.label}</li>)}</ul>
-            {!previous && <p>Начальный остаток {stock} {input.unit}</p>}
+            {!previous && <p>{stockEnabled ? `Начальный остаток: ${stock} ${input.unit}` : 'Запас не настроен'}</p>}
           </div>}
         </div>
         {(validation || action.error) && <Failure>{validation || action.error}</Failure>}
-        <div className="row-actions">
-          {step > 0 && <button type="button" className="btn secondary" disabled={action.busy} onClick={() => { setValidation(''); setStep(step - 1) }}><Icon name="previous" /> Назад</button>}
+        <div className="row-actions wizard-actions">
           <button type="submit" className="btn" disabled={action.busy || (!editable && step === 4)}>{step === 4 ? 'Сохранить лекарство' : 'Далее'}</button>
+          {step === 0 && <a className="btn secondary" href={previous ? `#/meds/${previous.medicine.id}` : '#/meds'}>Отмена</a>}
+          {step > 0 && <button type="button" className="btn secondary" disabled={action.busy} onClick={() => { setValidation(''); setStep(step - 1) }}><Icon name="previous" /> Назад</button>}
         </div>
       </form>
     </section>

@@ -43,11 +43,11 @@ export function TodayPage({
   return (
     <>
       <Header title="Сегодня" subtitle={dateLabel(today)}>
-        <button className="btn" onClick={() => setAdding(true)} disabled={!editable}>
+        <button className="btn today-add" onClick={() => setAdding(true)} disabled={!editable}>
           <Icon name="plus" /> Добавить приём
         </button>
       </Header>
-      {adding && <OneOffDose tracker={tracker} settings={settings} editable={editable} close={() => setAdding(false)} />}
+      {adding && <OneOffDose tracker={tracker} settings={settings} today={today} editable={editable} close={() => setAdding(false)} />}
       <div className="metrics">
         <div className="metric green">
           <strong>
@@ -83,7 +83,7 @@ export function TodayPage({
           />
           {!active.length && (
             <div className="row-actions">
-              <a href="#/meds/new" className="btn">
+              <a href="#/meds/new" className="btn secondary">
                 Добавить лекарство
               </a>
             </div>

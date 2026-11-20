@@ -12,10 +12,14 @@ export interface Medicine extends Owned {
   unit: string
   strength: string
   stock: number
-  stockEventId: string
+  stockEventId: string | null
   warningDays: number
   archived: boolean
   currentCourseId: string
+}
+
+export function tracksStock(medicine: Pick<Medicine, 'stockEventId'>) {
+  return medicine.stockEventId !== null
 }
 
 export interface Course extends Owned {
@@ -98,6 +102,7 @@ export interface DoseRecord extends DosePlan {
   status: SavedStatus
   actualAt: Timestamp | null
   actualQuantity: number
+  stockTracked?: false
   recordedAt: Timestamp
   revision: number
 }

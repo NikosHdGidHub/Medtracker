@@ -36,7 +36,7 @@ import type {
   Settings,
   StockEntry,
 } from '../domain/models'
-import { defaultTiming, isOneOff, MAX_QUANTITY, ONE_OFF } from '../domain/models'
+import { defaultTiming, isOneOff, MAX_QUANTITY, ONE_OFF, tracksStock } from '../domain/models'
 import { changeStock, dosePlan, inside, sameMark } from '../domain/planning'
 import type { DoseChange } from '../domain/planning'
 import { addDays, FIRST_INSTANT, LAST_INSTANT, localInstant, logicalDay, rangeBounds } from '../domain/time'
@@ -225,7 +225,7 @@ export class Tracker {
   async saveMedicine(
     input: MedicineInput,
     schedule: Schedule,
-    initialStock: number,
+    initialStock: number | null,
     previous?: { medicine: Row<Medicine>; course: Row<Course>; version: Row<ScheduleVersion> }
   ) {
     const medicine = previous
@@ -264,8 +264,8 @@ export class Tracker {
         transaction.set(medicine, {
           ...input,
           ownerId: this.uid,
-          stock: initialStock,
-          stockEventId: `initial_${medicine.id}`,
+          stock: initialStock ?? 0,
+          stockEventId: initialStock === null ? null : `initial_${medicine.id}`,
           archived: false,
           currentCourseId: course.id,
         } satisfies Medicine)
@@ -277,7 +277,7 @@ export class Tracker {
           endedAt: null,
           manualPauseId: null,
         } satisfies Course)
-        this.ledger(transaction, `initial_${medicine.id}`, {
+        if (initialStock !== null) this.ledger(transaction, `initial_${medicine.id}`, {
           medicineId: medicine.id,
           doseId: null,
           delta: initialStock,
@@ -418,19 +418,21 @@ export class Tracker {
     })
   }
 
-  async updateStock(medicineId: string, kind: 'restock' | 'inventory', quantity: number) {
-    if (kind === 'restock' && quantity <= 0)
+  async updateStock(medicineId: string, mode: 'setup' | 'restock' | 'inventory', quantity: number) {
+    if (mode === 'restock' && quantity <= 0)
       throw new Error('Укажите положительное количество для пополнения.')
-    const operation = doc(this.group('stockLedger'))
+    const operation = mode === 'setup' ? `initial_${medicineId}` : doc(this.group('stockLedger')).id
     const medicineRef = doc(this.group('medicines'), medicineId)
     await runTransaction(this.db, async (transaction) => {
       const medicine = await required<Medicine>(transaction, medicineRef)
+      if (tracksStock(medicine) === (mode === 'setup')) throw stale()
       const at = Timestamp.now()
+      const kind = mode === 'setup' ? 'initial' : mode
       const balance = kind === 'restock' ? medicine.stock + quantity : quantity
       if (balance > MAX_QUANTITY) throw new Error('Новый остаток превышает допустимое значение.')
-      if (balance === medicine.stock) return
-      transaction.update(medicineRef, { stock: balance, stockEventId: operation.id })
-      this.ledger(transaction, operation.id, {
+      if (mode !== 'setup' && balance === medicine.stock) return
+      transaction.update(medicineRef, { stock: balance, stockEventId: operation })
+      this.ledger(transaction, operation, {
         medicineId,
         kind,
         balance,
@@ -438,39 +440,45 @@ export class Tracker {
         delta: balance - medicine.stock,
         at,
       })
-      this.audit(transaction, operation.id, {
+      this.audit(transaction, operation, {
         entityId: medicineId,
         medicineId,
-        action: kind,
+        action: mode === 'setup' ? 'stock_configured' : kind,
         at,
-        before: { stock: medicine.stock },
+        before: { stock: mode === 'setup' ? null : medicine.stock },
         after: { stock: balance },
       })
     })
   }
 
-  async addOneOff(medicineId: string, quantity: number, localTime: string, expectedCalendarId: string) {
+  async addOneOff(
+    medicineId: string, quantity: number, time: string, deadline: string,
+    expected: { calendarId: string; day: string }
+  ) {
     if (!Number.isInteger(quantity) || quantity <= 0 || quantity > MAX_QUANTITY)
       throw new Error('Укажите количество больше нуля с точностью до 0,001.')
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(localTime))
-      throw new Error('Укажите дату и время приёма.')
+    const clock = /^([01]\d|2[0-3]):[0-5]\d$/
+    if (!clock.test(time) || !clock.test(deadline)) throw new Error('Укажите время приёма и дедлайн.')
+    if (deadline < time) throw new Error('Дедлайн должен быть не раньше времени приёма.')
 
     const slotId = doc(this.group('doses')).id
     await runTransaction(this.db, async (transaction) => {
       const medicine = await required<Medicine>(transaction, doc(this.group('medicines'), medicineId))
       const settings = await required<Settings>(transaction, doc(this.group('settings'), 'main'))
-      if (medicine.archived || settings.calendarId !== expectedCalendarId) throw stale()
+      if (medicine.archived || settings.calendarId !== expected.calendarId) throw stale()
 
       const at = Timestamp.now()
-      const scheduledAt = localInstant(localTime.slice(0, 10), localTime.slice(11), settings.zone)
-      const date = logicalDay(scheduledAt.toMillis(), settings)
-      if (date < logicalDay(at.toMillis(), settings) || date > '9998-12-30')
-        throw new Error('Выберите время сегодня или в будущем.')
+      const date = logicalDay(at.toMillis(), settings)
+      if (date !== expected.day) throw new Error('Дата изменилась. Откройте форму заново.')
+      const scheduledAt = localInstant(date, time, settings.zone)
+      const deadlineAt = localInstant(date, deadline, settings.zone)
+      if (deadlineAt.toMillis() < scheduledAt.toMillis())
+        throw new Error('Из-за перевода часов дедлайн оказался раньше времени приёма. Выберите другое время.')
       const id = [ONE_OFF, settings.calendarId, date, slotId].join('_')
       const record: DoseRecord = {
         ownerId: this.uid, medicineId, courseId: ONE_OFF, versionId: ONE_OFF,
         calendarId: settings.calendarId, slotId, logicalDate: date, scheduledAt,
-        deadlineAt: Timestamp.fromMillis(scheduledAt.toMillis() + 60 * 60_000),
+        deadlineAt,
         name: medicine.name, unit: medicine.unit, label: 'Разовый приём', quantity,
         zone: settings.zone, boundary: settings.boundary,
         status: 'pending', actualAt: null, actualQuantity: 0, recordedAt: at, revision: 1,
@@ -486,7 +494,7 @@ export class Tracker {
     if (dose.status === 'canceled') throw stale()
     const doseRef = doc(this.group('doses'), dose.id)
     const medicineRef = doc(this.group('medicines'), dose.medicineId)
-    let previousStockEvent: string | undefined
+    let previousStockEvent: Medicine['stockEventId'] | undefined
     const save = () =>
       runTransaction(this.db, async (transaction) => {
         const snap = await transaction.get(doseRef)
@@ -522,9 +530,12 @@ export class Tracker {
         const at = Timestamp.now()
         const revision = (previous?.revision ?? 0) + 1
         const id = `dose_${dose.id}_${revision}`
-        const record: DoseRecord = { ...dosePlan(dose), ...next, revision, recordedAt: at }
+        const withoutStock = previous?.stockTracked === false || (next.status === 'taken' && !tracksStock(medicine))
+        const record: DoseRecord = {
+          ...dosePlan(dose), ...next, revision, recordedAt: at, ...(withoutStock && { stockTracked: false }),
+        }
         transaction.set(doseRef, record)
-        const delta = changeStock(previous, next)
+        const delta = withoutStock ? 0 : changeStock(previous, next)
         if (delta !== 0) {
           const balance = medicine.stock + delta
           if (Math.abs(balance) > MAX_QUANTITY)
@@ -566,7 +577,7 @@ export class Tracker {
         if (sameMark(current, next) || (quick && current && current.status !== 'pending')) return
         if ((current?.revision ?? 0) !== (dose.record?.revision ?? 0)) throw stale()
         const medicine = (await getDocFromServer(medicineRef)).data() as Medicine | undefined
-        if (!previousStockEvent || !medicine || medicine.stockEventId === previousStockEvent)
+        if (previousStockEvent === undefined || !medicine || medicine.stockEventId === previousStockEvent)
           throw error
       }
     }
